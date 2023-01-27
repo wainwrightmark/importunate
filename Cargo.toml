@@ -1,0 +1,52 @@
+[package]
+name = "importunate"
+version = "0.1.0"
+authors = ["Mark Wainwright <wainwrightml@gmail.com>"]
+description = "Methods for returning random elements from an iterator."
+documentation = "https://docs.rs/importunate"
+repository = "https://github.com/wainwrightmark/importunate"
+readme = "README.md"
+keywords = ["random", "iterator", "min", "max"
+            ]
+categories = [
+    # "api-bindings"
+]
+license = "MIT"
+edition = "2021"
+exclude = [
+    # (optional) list any files we don't want to publish to crates.io
+    # for example, assume the below is a folder which contains large `mp4` files:
+    #   "examples/assets"
+]
+
+# See here for more info: https://blog.rust-lang.org/2020/03/15/docs-rs-opt-into-fewer-targets.html
+
+[package.metadata.docs.rs]
+all-features = true
+targets = ["x86_64-unknown-linux-gnu"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+array-const-fn-init = "0.1.1"
+num = { version = "0.4.0", default-features = false }
+static_assertions = "1.1.0"
+
+[dev-dependencies]
+# version_sync: to ensure versions in `Cargo.toml` and `README.md` are in sync
+version-sync = "0.9.4"
+insta = "1" # default features needed for testing
+# Some useful libraries - uncomment if needed :-)
+# tabled = "0.4.2"
+# indoc = "1.0.4"
+criterion = "0.4"
+anyhow="*"
+ntest= "*"
+itertools="*"
+
+[[bench]]
+name = "my_benchmark"
+harness = false
+
+[features]
+std = []
