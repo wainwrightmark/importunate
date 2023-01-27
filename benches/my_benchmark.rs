@@ -1,76 +1,76 @@
-// use criterion::{black_box, criterion_group, criterion_main, Criterion};
-// use importunate::importunate;
-// use rand::{seq::IteratorRandom, SeedableRng};
+use std::any::type_name;
 
-// pub fn criterion_benchmark(c: &mut Criterion) {
-//     for value in [1, 2, 4, 20, 100, 1000, 10000] {
-//         c.bench_function(format!("random_item({value})").as_str(), |b| {
-//             let mut rng = get_rng(123);
-//             b.iter(|| random_item(black_box(value), &mut rng))
-//         });
-//         c.bench_function(format!("choose({value})").as_str(), |b| {
-//             let mut rng = get_rng(123);
-//             b.iter(|| choose(black_box(value), &mut rng))
-//         });
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use importunate::*;
 
-//         c.bench_function(format!("random_item_windowed({value})").as_str(), |b| {
-//             let mut rng = get_rng(123);
-//             b.iter(|| random_item_windowed(black_box(value), 100, &mut rng))
-//         });
-//         c.bench_function(format!("choose_windowed({value})").as_str(), |b| {
-//             let mut rng = get_rng(123);
-//             b.iter(|| choose_windowed(black_box(value), 100, &mut rng))
-//         });
-//     }
-// }
+pub fn criterion_benchmark(c: &mut Criterion) {
+    bench_calculate::<u8, 5> (c);
+    bench_calculate::<u128, 5> (c);
+    bench_calculate::<u16, 8> (c);
+    bench_calculate::<u32, 12> (c);
+    bench_calculate::<u64, 15> (c);
+    bench_calculate::<u64, 20> (c);
+    bench_calculate::<u128, 34> (c);
 
-// fn random_item(max: usize, rng: &mut rand::rngs::StdRng) -> usize {
-//     let range = UnhintedIterator(0..max);
-//     range.choose_item(rng).unwrap()
-// }
+    bench_apply::<u8, 5> (c);
+    bench_calculate::<u128, 5> (c);
+    bench_apply::<u16, 8> (c);
+    bench_apply::<u32, 12> (c);
+    bench_apply::<u64, 15> (c);
+    bench_apply::<u64, 20> (c);
+    bench_calculate::<u128, 34> (c);
 
-// fn choose(max: usize, rng: &mut rand::rngs::StdRng) -> usize {
-//     let range = UnhintedIterator(0..max);
-//     range.choose(rng).unwrap()
-// }
 
-// fn random_item_windowed(max: usize, window: usize, rng: &mut rand::rngs::StdRng) -> usize {
-//     let range = WindowHintedIterator(0..max, window);
-//     range.choose_item(rng).unwrap()
-// }
-// fn choose_windowed(max: usize, window: usize, rng: &mut rand::rngs::StdRng) -> usize {
-//     let range = WindowHintedIterator(0..max, window);
-//     range.choose(rng).unwrap()
-// }
+    c.bench_function(format!("new index 20 19").as_str(), |b| {
+        let mut arr: [usize; 20] = core::array::from_fn(|x| x);
+        arr.reverse();
+        let perm = Permutation::<u64, 20>::try_calculate(arr).unwrap();
 
-// fn get_rng(seed: u64) -> rand::rngs::StdRng {
-//     rand::rngs::StdRng::seed_from_u64(seed)
-// }
+        b.iter(|| new_index(black_box(perm), 19))
+    });
 
-// criterion_group!(benches, criterion_benchmark);
-// criterion_main!(benches);
+    c.bench_function(format!("new index 20 0").as_str(), |b| {
+        let mut arr: [usize; 20] = core::array::from_fn(|x| x);
+        arr.reverse();
+        let perm = Permutation::<u64, 20>::try_calculate(arr).unwrap();
 
-// #[derive(Clone)]
-// struct UnhintedIterator<I: Iterator + Clone>(I);
-// impl<I: Iterator + Clone> Iterator for UnhintedIterator<I> {
-//     type Item = I::Item;
+        b.iter(|| new_index(black_box(perm), 0))
+    });
+}
 
-//     fn next(&mut self) -> Option<Self::Item> {
-//         self.0.next()
-//     }
-// }
 
-// #[derive(Clone)]
-// struct WindowHintedIterator<I: ExactSizeIterator + Iterator + Clone>(I, usize);
 
-// impl<I: ExactSizeIterator + Iterator + Clone> Iterator for WindowHintedIterator<I> {
-//     type Item = I::Item;
+fn bench_apply<Inner: PermutationInner, const SIZE: usize, >(c: &mut Criterion) {
+    c.bench_function(format!("apply {} {SIZE}", type_name::<Inner>()).as_str(), |b| {
+        let arr = Permutation::<Inner, SIZE>::DEFAULT_ARRAY;
+        let perm = Permutation::<Inner, SIZE>::try_calculate(arr).unwrap();
+        let test_arr = arr;
+        b.iter(|| apply(black_box(test_arr), perm))
+    });
+}
+fn bench_calculate< Inner: PermutationInner, const SIZE: usize,>(c: &mut Criterion) {
+    c.bench_function(format!("calculate {} {SIZE}", type_name::<Inner>()).as_str(), |b| {
+        let mut arr: [usize; SIZE] = core::array::from_fn(|x| x);
+        arr.reverse();
+        let test_arr = arr;
+        b.iter(|| calculate::<Inner, SIZE, > (black_box(test_arr)))
+    });
+}
 
-//     fn next(&mut self) -> Option<Self::Item> {
-//         self.0.next()
-//     }
+fn calculate<Inner: PermutationInner, const SIZE: usize, >(arr: [usize; SIZE]) -> Permutation<u64, SIZE> {
+    Permutation::try_calculate(arr).unwrap()
+}
 
-//     fn size_hint(&self) -> (usize, Option<usize>) {
-//         (core::cmp::min(self.0.len(), self.1), None)
-//     }
-// }
+fn apply<Inner: PermutationInner, const SIZE: usize, >(
+    mut arr: [usize; SIZE],
+    permutation: Permutation<Inner, SIZE>,
+) -> [usize; SIZE] {
+    permutation.apply(&mut arr);
+    arr
+}
+
+fn new_index<const SIZE: usize>(permutation: Permutation<u64, SIZE>, index: usize) -> usize {
+    permutation.get_new_index(index)
+}
+criterion_group!(benches, criterion_benchmark);
+criterion_main!(benches);
