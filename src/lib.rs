@@ -123,19 +123,18 @@ macro_rules! impl_permutation_inner {
                     }
                 }
 
-                const FACTORIALS: [$inner; $arr_len] =
-                    array_const_fn_init![factorial1; $arr_len];
+                const FACTORIALS: [$inner; $arr_len] = array_const_fn_init![factorial1; $arr_len];
                 FACTORIALS[n]
             }
         }
     };
 }
 
-impl_permutation_inner!(u8, 5,6);
-impl_permutation_inner!(u16, 8,9);
-impl_permutation_inner!(u32, 12,13);
-impl_permutation_inner!(u64, 20,21);
-impl_permutation_inner!(u128, 34,35);
+impl_permutation_inner!(u8, 5, 6);
+impl_permutation_inner!(u16, 8, 9);
+impl_permutation_inner!(u32, 12, 13);
+impl_permutation_inner!(u64, 20, 21);
+impl_permutation_inner!(u128, 34, 35);
 
 impl<Inner: PermutationInner, const Elements: usize> From<Inner> for Permutation<Inner, Elements> {
     fn from(value: Inner) -> Self {
@@ -173,41 +172,44 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
         }
     }
 
-    pub fn get_inverse_factorial(n: usize) -> Inner {
-        let mut m: Inner = Elements.try_into().ok().unwrap();
-        let mut total: Inner = Inner::one();
-        for _ in 0..n {
-            total = total * m;
-            m = m - Inner::one();
-        }
-        total
-    }
+    // pub fn get_inverse_factorial(n: usize) -> Inner {
+    //     let mut m: Inner = Elements.try_into().ok().unwrap();
+    //     let mut total: Inner = Inner::one();
+    //     for _ in 0..n {
+    //         total = total * m;
+    //         m = m - Inner::one();
+    //     }
+    //     total
+    // }
 
     /// Calculate the permutation of an array
+    /// Beware: if the array contains duplicate elements, this may loop forever
     pub fn try_calculate(mut arr: [usize; Elements]) -> Option<Self> {
+        let mut slot_multiplier: Inner = Inner::one();
         let mut r: Inner = Inner::zero();
         'outer: for index in (0..Elements) {
             let mut swap_element = arr[index];
 
-            let diff = 'inner: loop {
+            'inner: loop {
                 match swap_element.checked_sub(index) {
                     None => return None, //Array is invalid
-                    Some(0) => continue 'outer,
+                    Some(0) => break 'inner,
                     Some(diff) => {
                         swap_element = arr[swap_element];
                         if swap_element == index {
-                            break 'inner diff;
+                            let amount = arr[index] - index;
+
+                            arr.swap(index, index + diff);
+
+                            let change =
+                                (slot_multiplier * (Inner::try_from(amount).ok().unwrap()));
+                            r = r + change;
+                            break 'inner;
                         }
                     }
                 }
-            };
-            let amount = arr[index] - index;
-
-            arr.swap(index, index + diff);
-
-            let slot_multiplier = Self::get_inverse_factorial(index);
-            let change = (slot_multiplier * (Inner::try_from(amount).ok().unwrap()));
-            r = r + change;
+            }
+            slot_multiplier = slot_multiplier * Inner::try_from((Elements - index)).ok().unwrap();
         }
         Some(Self(r))
     }
@@ -252,7 +254,7 @@ mod tests {
     use itertools::Itertools;
     use ntest::test_case;
 
-    use crate::{PermutationInner, Permutation};
+    use crate::{Permutation, PermutationInner};
 
     #[test]
     pub fn all_possible_orderings_are_unique() -> Result<(), anyhow::Error> {
