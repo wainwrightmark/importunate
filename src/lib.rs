@@ -4,6 +4,8 @@
 #![allow(warnings, dead_code, unused_imports, unused_mut)]
 #![warn(clippy::pedantic)]
 
+
+
 //! [![github]](https://github.com/wainwrightmark/importunate)&ensp;[![crates-io]](https://crates.io/crates/importunate)&ensp;[![docs-rs]](https://docs.rs/importunate)
 //!
 //! [github]: https://img.shields.io/badge/github-8da0cb?style=for-the-badge&labelColor=555555&logo=github
@@ -33,7 +35,6 @@
 //! [`README.md`]: https://github.com/wainwrightmark/importunate
 
 // TODO
-// SERDE
 // multiplication
 // inverse
 // element at index
@@ -48,9 +49,12 @@ use core::ops::Range;
 
 use num::{Integer, Unsigned};
 use static_assertions::const_assert;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 /// A permutation
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Permutation<Inner: PermuationInner, const ELEMENTS: usize>(Inner);
 
 /// The inner type of a permutation
