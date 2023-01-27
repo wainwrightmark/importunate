@@ -48,7 +48,7 @@ fn bench_apply<Inner: PermutationInner, const SIZE: usize>(c: &mut Criterion) {
         format!("apply {} {SIZE}", type_name::<Inner>()).as_str(),
         |b| {
             let arr = Permutation::<Inner, SIZE>::DEFAULT_ARRAY;
-            let perm = Permutation::<Inner, SIZE>::try_calculate(arr).unwrap();
+            let perm = Permutation::<Inner, SIZE>::try_calculate(arr, |&x|x).unwrap();
             let test_arr = arr;
             b.iter(|| apply(black_box(test_arr), perm))
         },
@@ -69,7 +69,7 @@ fn bench_calculate<Inner: PermutationInner, const SIZE: usize>(c: &mut Criterion
 fn calculate<Inner: PermutationInner, const SIZE: usize>(
     arr: [usize; SIZE],
 ) -> Permutation<u64, SIZE> {
-    Permutation::try_calculate(arr).unwrap()
+    Permutation::try_calculate(arr, |&x|x).unwrap()
 }
 
 fn apply<Inner: PermutationInner, const SIZE: usize>(
@@ -84,14 +84,14 @@ fn new_index<Inner: PermutationInner, const SIZE: usize>(
     permutation: Permutation<Inner, SIZE>,
     index: usize,
 ) -> usize {
-    permutation.get_new_index(index)
+    permutation.index_of(&index, |&x|x)
 }
 
 fn old_index<Inner: PermutationInner, const SIZE: usize>(
     permutation: Permutation<Inner, SIZE>,
     index: usize,
 ) -> usize {
-    permutation.get_old_index(index)
+    permutation.element_at_index(index, |x|x)
 }
 criterion_group!(benches, criterion_benchmark);
 criterion_main!(benches);

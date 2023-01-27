@@ -184,20 +184,20 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
 
     /// Calculate the permutation of an array
     /// Beware: if the array contains duplicate elements, this may loop forever
-    pub fn try_calculate(mut arr: [usize; Elements]) -> Option<Self> {
+    pub fn try_calculate<T, F: Fn(&T) -> usize>(mut arr: [T; Elements], f: F) -> Option<Self> {
         let mut slot_multiplier: Inner = Inner::one();
         let mut r: Inner = Inner::zero();
         'outer: for index in (0..Elements) {
-            let mut swap_element = arr[index];
+            let mut swap_element = f(&arr[index]);
 
             'inner: loop {
                 match swap_element.checked_sub(index) {
                     None => return None, //Array is invalid
                     Some(0) => break 'inner,
                     Some(diff) => {
-                        swap_element = arr[swap_element];
+                        swap_element = f(&arr[swap_element]);
                         if swap_element == index {
-                            let amount = arr[index] - index;
+                            let amount = f(&arr[index]) - index;
 
                             arr.swap(index, index + diff);
 
@@ -214,15 +214,17 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
         Some(Self(r))
     }
 
-    pub fn get_old_index(&self, new_index: usize) -> usize {
+    pub fn element_at_index<T, F: Fn(usize) -> T>(&self, new_index: usize, f: F) -> T {
         debug_assert!(new_index < Elements);
         let mut arr = Self::DEFAULT_ARRAY;
         self.apply(&mut arr);
 
-        arr[new_index]
+        let i = arr[new_index];
+        f(i)
     }
 
-    pub fn get_new_index(&self, old_index: usize) -> usize {
+    pub fn index_of<T, F: Fn(&T) -> usize>(&self, element: &T, f: F) -> usize {
+        let old_index = f(element);
         debug_assert!(old_index < Elements);
         let mut arr = Self::DEFAULT_ARRAY;
         self.apply(&mut arr);
@@ -287,7 +289,7 @@ mod tests {
             let mut arr: [usize; 4] = [0, 1, 2, 3];
             ordering.apply(&mut arr);
             println!("{arr:?}");
-            let calculated = Permutation::<u8, 4>::try_calculate(arr).unwrap();
+            let calculated = Permutation::<u8, 4>::try_calculate(arr, |x| *x).unwrap();
 
             assert_eq!(ordering, calculated)
         }
@@ -322,7 +324,7 @@ mod tests {
             let mut arr = [0, 1, 2, 3];
             ordering.apply(&mut arr);
 
-            for old_index in 0..4 {
+            for old_index in 0..4usize {
                 let new_index1 = arr
                     .iter()
                     .enumerate()
@@ -330,7 +332,7 @@ mod tests {
                     .next()
                     .unwrap()
                     .0;
-                let new_index2 = ordering.get_new_index(old_index);
+                let new_index2 = ordering.index_of(&old_index, |x| *x);
 
                 assert_eq!(new_index1, new_index2);
             }
@@ -348,7 +350,7 @@ mod tests {
 
             for new_index in 0..4 {
                 let old_index1 = arr[new_index];
-                let old_index2 = ordering.get_old_index(new_index);
+                let old_index2 = ordering.element_at_index(new_index, |x| x);
 
                 assert_eq!(old_index1, old_index2);
             }
@@ -366,10 +368,10 @@ mod tests {
                 // println!("{arr:?}");
 
                 //This orders arrays like [3,0,1,2] - effectively rotating them
-                let index_of_0 = permutation.get_new_index(0);
+                let index_of_0 = permutation.index_of(&0, |&x| x);
                 assert_eq!(index_of_0, 1);
 
-                let element_at_0 = permutation.get_old_index(0);
+                let element_at_0 = permutation.element_at_index(0, |x| x);
                 assert_eq!(element_at_0, $max_elements - 1);
             }
         };
