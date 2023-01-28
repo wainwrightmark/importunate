@@ -37,9 +37,7 @@
 // inverse
 // element at index
 // index of element
-// create from array
 // documentation
-// benchmarking
 
 use core::fmt::Debug;
 use core::hash::Hash;
@@ -101,10 +99,14 @@ macro_rules! impl_permutation_inner {
             const MAX_ELEMENTS: usize = $max_elements;
 
             fn get_factorial(n: usize) -> Self {
-                use array_const_fn_init::array_const_fn_init;
-
-                const fn factorial1(i: usize) -> $inner {
-                    factorial(i as $inner)
+                const fn make_arr() -> [$inner; $arr_len] {
+                    let mut arr = [0; $arr_len];
+                    let mut i = 0;
+                    while i < $arr_len{
+                        arr[i] = factorial(i as $inner);
+                        i = i + 1;
+                    }
+                    arr
                 }
 
                 const fn factorial(i: $inner) -> $inner {
@@ -115,7 +117,7 @@ macro_rules! impl_permutation_inner {
                     }
                 }
 
-                const FACTORIALS: [$inner; $arr_len] = array_const_fn_init![factorial1; $arr_len];
+                const FACTORIALS: [$inner; $arr_len] = make_arr();
                 FACTORIALS[n]
             }
         }
