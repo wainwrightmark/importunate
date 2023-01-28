@@ -34,8 +34,6 @@
 
 // TODO
 // multiplication
-// inverse
-// element at index
 // index of element
 // documentation
 
@@ -102,7 +100,7 @@ macro_rules! impl_permutation_inner {
                 const fn make_arr() -> [$inner; $arr_len] {
                     let mut arr = [0; $arr_len];
                     let mut i = 0;
-                    while i < $arr_len{
+                    while i < $arr_len {
                         arr[i] = factorial(i as $inner);
                         i = i + 1;
                     }
@@ -160,10 +158,41 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
         let len = arr.len().min(Elements);
 
         for i in (0..len) {
+            if rem.is_zero() {
+                return;
+            }
             let (r, diff) = rem.div_rem(&(len - i).try_into().ok().unwrap());
             rem = r;
             arr.swap(i, (diff.try_into().ok().unwrap() + i));
         }
+    }
+
+    fn get_swaps(&self) -> [usize; Elements] {
+        let mut swaps = [0; Elements];
+
+        let mut rem = self.0;
+
+        for i in (0..Elements) {
+            if rem.is_zero() {
+                break;
+            }
+            let (r, diff) = rem.div_rem(&(Elements - i).try_into().ok().unwrap());
+            rem = r;
+            swaps[i] = (diff.try_into().ok().unwrap());
+        }
+        swaps
+    }
+
+    fn from_swaps(swaps: &[usize; Elements]) -> Self {
+        let mut inner: Inner = Inner::zero();
+        let mut mult: Inner = Inner::one();
+        for i in 0..Elements {
+            let r = mult * swaps[i].try_into().ok().unwrap();
+            inner = inner + r;
+            mult = mult * (Elements - i).try_into().ok().unwrap();
+        }
+
+        Self(inner)
     }
 
     //e.g. 1,4,12,24 or 1,5,20,60,120
@@ -181,7 +210,7 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
     /// Beware: if the array contains duplicate elements, this may loop forever
     pub fn try_calculate<T, F: Fn(&T) -> usize>(mut arr: [T; Elements], f: F) -> Option<Self> {
         let mut slot_multiplier: Inner = Inner::one();
-        let mut r: Inner = Inner::zero();
+        let mut inner: Inner = Inner::zero();
         'outer: for index in (0..Elements) {
             let mut swap_element = f(&arr[index]);
 
@@ -198,7 +227,7 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
 
                             let change =
                                 (slot_multiplier * (Inner::try_from(amount).ok().unwrap()));
-                            r = r + change;
+                            inner = inner + change;
                             break 'inner;
                         }
                     }
@@ -206,7 +235,7 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
             }
             slot_multiplier = slot_multiplier * Inner::try_from((Elements - index)).ok().unwrap();
         }
-        Some(Self(r))
+        Some(Self(inner))
     }
 
     pub fn element_at_index<T, F: Fn(usize) -> T>(&self, new_index: usize, f: F) -> T {
@@ -241,12 +270,11 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
     pub fn index_of<T, F: Fn(&T) -> usize>(&self, element: &T, f: F) -> usize {
         let old_index = f(element);
         debug_assert!(old_index < Elements);
-        let mut arr = Self::DEFAULT_ARRAY;
-        self.apply(&mut arr);
+        let arr = self.get_array();
         get_index_of(&arr, old_index)
     }
 
-    pub const DEFAULT_ARRAY: [usize; Elements] = {
+    const DEFAULT_ARRAY: [usize; Elements] = {
         let mut arr = [0usize; Elements];
         let mut i = 0;
         while i < Elements {
@@ -255,6 +283,77 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
         }
         arr
     };
+
+    pub fn get_array(&self) -> [usize; Elements] {
+        let mut arr = Self::DEFAULT_ARRAY;
+        self.apply(&mut arr);
+        arr
+    }
+
+    pub fn invert(&self) -> Self {
+        // let arr = self.get_array();
+
+        // let mut arr2 = [0usize; Elements];
+        // for index in 0..Elements {
+        //     let (new_index, _) = arr.iter().enumerate().find(|(i, &x)| x == index).unwrap();
+        //     arr2[index] = new_index
+        // }
+
+        // let result = Self::try_calculate(arr2, |&x| x);
+        // result.unwrap()
+
+        let mut swaps = self.get_swaps();
+        let mut updated = 0;
+
+        for i in (0..Elements).rev() {
+            let swap = swaps[i];
+            if swap != 0 {
+                let i2 = i + swap;
+                for j in (0..i).rev() {
+                    if swaps[j] + j == i {
+                        swaps[j] = i2;
+                        updated += 1;
+                    } else if swaps[j] + j == i2 {
+                        swaps[j] = i;
+                        updated += 1;
+                    }
+                }
+            }
+        }
+
+        if updated == 0{
+            return self.clone();
+        }
+
+        Self::from_swaps(&swaps)
+
+        /*
+        [0, 0, 0, 0] [0, 0, 0, 0]
+        [1, 0, 0, 0] [1, 0, 0, 0]
+        [2, 0, 0, 0] [2, 0, 0, 0]
+        [3, 0, 0, 0] [3, 0, 0, 0]
+        [0, 1, 0, 0] [0, 1, 0, 0]
+        [1, 1, 0, 0] [2, 1, 0, 0] *
+        [2, 1, 0, 0] [1, 1, 0, 0] *
+        [3, 1, 0, 0] [3, 1, 0, 0]
+        [0, 2, 0, 0] [0, 2, 0, 0]
+        [1, 2, 0, 0] [3, 2, 0, 0] *
+        [2, 2, 0, 0] [2, 2, 0, 0]
+        [3, 2, 0, 0] [1, 2, 0, 0] *
+        [0, 0, 1, 0] [0, 0, 1, 0]
+        [1, 0, 1, 0] [1, 0, 1, 0]
+        [2, 0, 1, 0] [3, 0, 1, 0] *
+        [3, 0, 1, 0] [2, 0, 1, 0] *
+        [0, 1, 1, 0] [0, 2, 1, 0] *
+        [1, 1, 1, 0] [3, 2, 1, 0] *
+        [2, 1, 1, 0] [1, 2, 1, 0] *
+        [3, 1, 1, 0] [2, 2, 1, 0] *
+        [0, 2, 1, 0] [0, 1, 1, 0] *
+        [1, 2, 1, 0] [2, 1, 1, 0] *
+        [2, 2, 1, 0] [3, 1, 1, 0] *
+        [3, 2, 1, 0] [1, 1, 1, 0] *
+                                         */
+    }
 
     pub fn get_max() -> Self {
         let inner = Inner::get_factorial(Elements);
@@ -272,6 +371,61 @@ mod tests {
     use ntest::test_case;
 
     use crate::{Permutation, PermutationInner};
+
+    #[test]
+    pub fn test_swaps() {
+        let range: Range<u8> = PermutationInner::get_permutation_range(4);
+        for o in range {
+            let ordering: Permutation<u8, 4> = o.into();
+
+            let swaps = ordering.get_swaps();
+            let ordering2 = Permutation::<u8, 4>::from_swaps(&swaps);
+
+            assert_eq!(ordering, ordering2)
+        }
+    }
+
+    #[test]
+    pub fn test_invert() {
+        let range: Range<u8> = PermutationInner::get_permutation_range(4);
+
+        for o in range {
+            let ordering: Permutation<u8, 4> = o.into();
+
+            let arr = ordering.get_array();
+            let inverse = ordering.invert();
+            let inverse_arr = inverse.get_array();
+
+            println!("{:?} {:?}", ordering.get_swaps(), inverse.get_swaps());
+
+            let mut arr2 = arr.clone();
+            inverse.apply(&mut arr2);
+            let new_perm = Permutation::<u8, 4>::try_calculate(arr2, |&x| x).unwrap();
+
+            assert_eq!(0, new_perm.0)
+        }
+    }
+
+    // #[test]
+    // pub fn test_invert3() {
+    //     let range: Range<u8> = PermutationInner::get_permutation_range(3);
+
+    //     for o in range {
+    //         let ordering: Permutation<u8, 3> = o.into();
+
+    //         let arr = ordering.get_array();
+    //         let inverse = ordering.invert();
+    //         let inverse_arr = inverse.get_array();
+
+    //         println!("{:?} {:?}", ordering.get_swaps(), inverse.get_swaps());
+
+    //         let mut arr2 = arr.clone();
+    //         inverse.apply(&mut arr2);
+    //         let new_perm = Permutation::<u8, 3>::try_calculate(arr2, |&x| x).unwrap();
+
+    //         assert_eq!(0, new_perm.0)
+    //     }
+    // }
 
     #[test]
     pub fn test_element_at_index() {

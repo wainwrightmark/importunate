@@ -2,34 +2,34 @@
 
 //Produces the following output
 /*
-[0, 1, 2, 3]
-[1, 0, 2, 3]
-[2, 1, 0, 3]
-[3, 1, 2, 0]
-[0, 2, 1, 3]
-[1, 2, 0, 3]
-[2, 0, 1, 3]
-[3, 2, 1, 0]
-[0, 3, 2, 1]
-[1, 3, 2, 0]
-[2, 3, 0, 1]
-[3, 0, 2, 1]
-[0, 1, 3, 2]
-[1, 0, 3, 2]
-[2, 1, 3, 0]
-[3, 1, 0, 2]
-[0, 2, 3, 1]
-[1, 2, 3, 0]
-[2, 0, 3, 1]
-[3, 2, 0, 1]
-[0, 3, 1, 2]
-[1, 3, 0, 2]
-[2, 3, 1, 0]
-[3, 0, 1, 2]
+[0, 1, 2, 3] 0
+[1, 0, 2, 3] 1
+[2, 1, 0, 3] 2
+[3, 1, 2, 0] 3
+[0, 2, 1, 3] 4
+[1, 2, 0, 3] 5
+[2, 0, 1, 3] 6
+[3, 2, 1, 0] 7 Reverse
+[0, 3, 2, 1] 8
+[1, 3, 2, 0] 9
+[2, 3, 0, 1] 10
+[3, 0, 2, 1] 11
+[0, 1, 3, 2] 12
+[1, 0, 3, 2] 13
+[2, 1, 3, 0] 14
+[3, 1, 0, 2] 15
+[0, 2, 3, 1] 16
+[1, 2, 3, 0] 17 Rotate Left
+[2, 0, 3, 1] 18
+[3, 2, 0, 1] 19
+[0, 3, 1, 2] 20
+[1, 3, 0, 2] 21
+[2, 3, 1, 0] 22
+[3, 0, 1, 2] 23 Rotate Right
  */
 
 /*
-impl<Inner: PermuationInner, const Elements: usize> Permutation<Inner, Elements> {
+impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements> {
     /// Apply this permutation to an array, reordering the first `Elements` elements
     pub fn apply<T>(&self, arr: &mut [T]) {
         let mut rem = self.0;
