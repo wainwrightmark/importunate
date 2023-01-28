@@ -172,15 +172,16 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
         }
     }
 
-    // pub fn get_inverse_factorial(n: usize) -> Inner {
-    //     let mut m: Inner = Elements.try_into().ok().unwrap();
-    //     let mut total: Inner = Inner::one();
-    //     for _ in 0..n {
-    //         total = total * m;
-    //         m = m - Inner::one();
-    //     }
-    //     total
-    // }
+    //e.g. 1,4,12,24 or 1,5,20,60,120
+    fn get_backtorial(n: usize) -> Inner {
+        let mut m: Inner = Elements.try_into().ok().unwrap();
+        let mut total: Inner = Inner::one();
+        for _ in 0..n {
+            total = total * m;
+            m = m - Inner::one();
+        }
+        total
+    }
 
     /// Calculate the permutation of an array
     /// Beware: if the array contains duplicate elements, this may loop forever
@@ -216,11 +217,31 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
 
     pub fn element_at_index<T, F: Fn(usize) -> T>(&self, new_index: usize, f: F) -> T {
         debug_assert!(new_index < Elements);
-        let mut arr = Self::DEFAULT_ARRAY;
-        self.apply(&mut arr);
+        let mut current_index = new_index;
+        let mut fact: Inner = Self::get_backtorial(current_index);
+        let mut rem: Inner = self.0;
 
-        let i = arr[new_index];
-        f(i)
+        let mut watch_index = if current_index + 1 == Elements {
+            current_index
+        } else {
+            let (diff, rem_new) = rem.div_rem(&fact);
+            rem = rem_new;
+            let diff = diff % (Elements - current_index).try_into().ok().unwrap();
+            let diff = diff.try_into().ok().unwrap();
+            current_index + diff
+        };
+
+        while let Some(ci) = current_index.checked_sub(1) {
+            current_index = ci;
+            fact = fact / (Elements - current_index).try_into().ok().unwrap();
+            let (diff, rem_new) = rem.div_rem(&fact);
+            rem = rem_new;
+            let diff = diff.try_into().ok().unwrap();
+            if current_index + diff == watch_index {
+                watch_index = current_index;
+            }
+        }
+        f(watch_index)
     }
 
     pub fn index_of<T, F: Fn(&T) -> usize>(&self, element: &T, f: F) -> usize {
@@ -257,6 +278,60 @@ mod tests {
     use ntest::test_case;
 
     use crate::{Permutation, PermutationInner};
+
+    #[test]
+    pub fn test_element_at_index() {
+        let range: Range<u8> = PermutationInner::get_permutation_range(4);
+
+        for o in range {
+            let ordering: Permutation<u8, 4> = o.into();
+            let mut arr = [0, 1, 2, 3];
+            ordering.apply(&mut arr);
+
+            println!("");
+            println!("");
+            println!("{arr:?} :: {}", ordering.0);
+            let mut arr2 = [0, 1, 2, 3];
+
+            for index in 0..4 {
+                println!("");
+                println!("Index: {index}");
+                let element = ordering.element_at_index(index, |x| x);
+                println!("Element: {element}");
+                arr2[index] = element;
+            }
+
+            assert_eq!(arr, arr2);
+        }
+    }
+
+    #[test]
+    pub fn test_index_of() {
+        let range: Range<u8> = PermutationInner::get_permutation_range(4);
+
+        for o in range {
+            let ordering: Permutation<u8, 4> = o.into();
+            let mut arr = [0, 1, 2, 3];
+            ordering.apply(&mut arr);
+
+            let mut arr1 = [0, 1, 2, 3];
+            let mut arr2 = [0, 1, 2, 3];
+
+            for index in 0..4usize {
+                arr1[index] = arr
+                    .iter()
+                    .enumerate()
+                    .filter(|(i, x)| x == &&index)
+                    .next()
+                    .unwrap()
+                    .0;
+
+                arr2[index] = ordering.index_of(&index, |&x| x);
+            }
+
+            assert_eq!(arr1, arr2)
+        }
+    }
 
     #[test]
     pub fn all_possible_orderings_are_unique() -> Result<(), anyhow::Error> {
@@ -313,48 +388,6 @@ mod tests {
         assert_eq!(expected, actual);
 
         Ok(())
-    }
-
-    #[test]
-    pub fn test_get_new_index() {
-        let range: Range<u8> = PermutationInner::get_permutation_range(4);
-
-        for o in range {
-            let ordering: Permutation<u8, 4> = o.into();
-            let mut arr = [0, 1, 2, 3];
-            ordering.apply(&mut arr);
-
-            for old_index in 0..4usize {
-                let new_index1 = arr
-                    .iter()
-                    .enumerate()
-                    .filter(|(i, x)| x == &&old_index)
-                    .next()
-                    .unwrap()
-                    .0;
-                let new_index2 = ordering.index_of(&old_index, |x| *x);
-
-                assert_eq!(new_index1, new_index2);
-            }
-        }
-    }
-
-    #[test]
-    pub fn test_get_old_index() {
-        let range: Range<u8> = PermutationInner::get_permutation_range(4);
-
-        for o in range {
-            let ordering: Permutation<u8, 4> = o.into();
-            let mut arr = [0, 1, 2, 3];
-            ordering.apply(&mut arr);
-
-            for new_index in 0..4 {
-                let old_index1 = arr[new_index];
-                let old_index2 = ordering.element_at_index(new_index, |x| x);
-
-                assert_eq!(old_index1, old_index2);
-            }
-        }
     }
 
     macro_rules! test_max {
