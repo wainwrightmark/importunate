@@ -70,14 +70,6 @@ pub trait PermutationInner:
     + TryInto<usize>
     + core::iter::Product
 {
-    fn divmod(self, length: usize) -> (Self, usize) {
-        let l: Self = length.try_into().ok().unwrap();
-        let (s, r) = self.div_rem(&l);
-
-        let r: usize = r.try_into().ok().unwrap();
-        (s, r)
-    }
-
     const MAX_ELEMENTS: usize;
 
     fn get_permutation_max(elements: usize) -> Self {
@@ -166,9 +158,9 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
         let len = arr.len().min(Elements);
 
         for i in (0..len) {
-            let (r, diff) = rem.divmod(len - i);
+            let (r, diff) = rem.div_rem(&(len - i).try_into().ok().unwrap());
             rem = r;
-            arr.swap(i, diff + i);
+            arr.swap(i, (diff.try_into().ok().unwrap() + i));
         }
     }
 
