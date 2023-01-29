@@ -291,17 +291,6 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
     }
 
     pub fn invert(&self) -> Self {
-        // let arr = self.get_array();
-
-        // let mut arr2 = [0usize; Elements];
-        // for index in 0..Elements {
-        //     let (new_index, _) = arr.iter().enumerate().find(|(i, &x)| x == index).unwrap();
-        //     arr2[index] = new_index
-        // }
-
-        // let result = Self::try_calculate(arr2, |&x| x);
-        // result.unwrap()
-
         let mut swaps = self.get_swaps();
         let mut updated = 0;
 
@@ -311,10 +300,10 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
                 let i2 = i + swap;
                 for j in (0..i).rev() {
                     if swaps[j] + j == i {
-                        swaps[j] = i2;
+                        swaps[j] = i2 - j;
                         updated += 1;
                     } else if swaps[j] + j == i2 {
-                        swaps[j] = i;
+                        swaps[j] = i - j;
                         updated += 1;
                     }
                 }
@@ -396,7 +385,7 @@ mod tests {
             let inverse = ordering.invert();
             let inverse_arr = inverse.get_array();
 
-            println!("{:?} {:?}", ordering.get_swaps(), inverse.get_swaps());
+            println!("{}:  {:?} {:?}",ordering.0, ordering.get_swaps(), inverse.get_swaps());
 
             let mut arr2 = arr.clone();
             inverse.apply(&mut arr2);
