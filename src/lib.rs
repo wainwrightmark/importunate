@@ -206,9 +206,20 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
         total
     }
 
-    /// Calculate the permutation of an array
-    /// Beware: if the array contains duplicate elements, this may loop forever
-    pub fn try_calculate<T, F: Fn(&T) -> usize>(mut arr: [T; Elements], f: F) -> Option<Self> {
+    fn test_unique<T, F: Fn(&T) -> usize>(arr: [T; Elements], f: &F)-> bool{
+        let mut test = 0u64;
+
+        for x in arr{
+            let u = f(&x);
+            test = test | 1 << u;
+        }
+
+        let r =test.count_ones() as usize == Elements;
+        r
+    }
+
+    pub fn calculate<T, F: Fn(&T) -> usize>(mut arr: [T; Elements], f: &F) -> Self {
+        debug_assert!(!Self::test_unique(arr, f));
         let mut slot_multiplier: Inner = Inner::one();
         let mut inner: Inner = Inner::zero();
         'outer: for index in (0..Elements) {
@@ -216,7 +227,7 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
 
             'inner: loop {
                 match swap_element.checked_sub(index) {
-                    None => return None, //Array is invalid
+                    None => unreachable!(), //Array is invalid
                     Some(0) => break 'inner,
                     Some(diff) => {
                         swap_element = f(&arr[swap_element]);
@@ -235,7 +246,16 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
             }
             slot_multiplier = slot_multiplier * Inner::try_from((Elements - index)).ok().unwrap();
         }
-        Some(Self(inner))
+        Self(inner)
+    }
+
+    /// Calculate the permutation of an array
+    /// Beware: if the array contains duplicate elements, this may loop forever
+    pub fn try_calculate<T, F: Fn(&T) -> usize>(mut arr: [T; Elements], f: &F) -> Option<Self> {
+        if !Self::test_unique(arr, f){
+            return None;
+        }
+        Some(Self::calculate(arr, f))
     }
 
     pub fn element_at_index<T, F: Fn(usize) -> T>(&self, new_index: usize, f: F) -> T {
@@ -292,6 +312,13 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
     }
 
     pub fn combine(&self, rhs: &Self)-> Self{
+        let mut arr = self.get_array();
+        rhs.apply(&mut arr);
+        let r = Self::try_calculate(arr, |&x|x).unwrap();
+        r
+    }
+    
+    pub fn combine2(&self, rhs: &Self)-> Self{
         let mut arr = self.get_array();
         rhs.apply(&mut arr);
         let r = Self::try_calculate(arr, |&x|x).unwrap();
