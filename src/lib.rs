@@ -268,6 +268,7 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
     }
 
     pub fn index_of<T, F: Fn(&T) -> usize>(&self, element: &T, f: F) -> usize {
+        //TODO more efficient implementation
         let old_index = f(element);
         debug_assert!(old_index < Elements);
         let arr = self.get_array();
@@ -288,6 +289,13 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
         let mut arr = Self::DEFAULT_ARRAY;
         self.apply(&mut arr);
         arr
+    }
+
+    pub fn combine(&self, rhs: &Self)-> Self{
+        let mut arr = self.get_array();
+        rhs.apply(&mut arr);
+        let r = Self::try_calculate(arr, |&x|x).unwrap();
+        r
     }
 
     pub fn invert(&self) -> Self {
@@ -371,6 +379,26 @@ mod tests {
             let ordering2 = Permutation::<u8, 4>::from_swaps(&swaps);
 
             assert_eq!(ordering, ordering2)
+        }
+    }
+
+    #[test]
+    pub fn test_combine() {
+        let range1: Range<u8> = PermutationInner::get_permutation_range(4);
+        
+        
+        for o_left in range1 {
+            let p_left: Permutation<u8, 4> = o_left.into();
+            let range2: Range<u8> = PermutationInner::get_permutation_range(4);
+            for o_right in range2 {
+                let p_right: Permutation<u8, 4> = o_right.into();
+                let combined = p_left.combine(&p_right);
+                let o_comb = combined.0;
+
+                println!("{o_left:>2} + {o_right:>2} = {o_comb:>2}; {:?} + {:?} = {:?}",p_left.get_swaps(), p_right.get_swaps(), combined.get_swaps());
+
+            }
+            
         }
     }
 
