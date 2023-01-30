@@ -206,20 +206,19 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
         total
     }
 
-    fn test_unique<T, F: Fn(&T) -> usize>(arr: [T; Elements], f: &F)-> bool{
+    fn test_unique(arr: impl Iterator<Item = usize>)-> bool{
         let mut test = 0u64;
 
-        for x in arr{
-            let u = f(&x);
-            test = test | 1 << u;
+        for x in arr.take(Elements){
+            test = test | 1 << x;
         }
 
         let r =test.count_ones() as usize == Elements;
         r
     }
 
-    pub fn calculate<T, F: Fn(&T) -> usize>(mut arr: [T; Elements], f: &F) -> Self {
-        debug_assert!(!Self::test_unique(arr, f));
+    pub fn calculate<T, F: Fn(&T) -> usize>(mut arr: [T; Elements], f: F) -> Self {
+        debug_assert!(Self::test_unique(arr.iter().map(|x| f(x)) ));
         let mut slot_multiplier: Inner = Inner::one();
         let mut inner: Inner = Inner::zero();
         'outer: for index in (0..Elements) {
@@ -251,8 +250,8 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
 
     /// Calculate the permutation of an array
     /// Beware: if the array contains duplicate elements, this may loop forever
-    pub fn try_calculate<T, F: Fn(&T) -> usize>(mut arr: [T; Elements], f: &F) -> Option<Self> {
-        if !Self::test_unique(arr, f){
+    pub fn try_calculate<T, F: Fn(&T) -> usize>(mut arr: [T; Elements], f: F) -> Option<Self> {
+        if !Self::test_unique(arr.iter().map(|x| f(x)) ){
             return None;
         }
         Some(Self::calculate(arr, f))
@@ -314,16 +313,16 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
     pub fn combine(&self, rhs: &Self)-> Self{
         let mut arr = self.get_array();
         rhs.apply(&mut arr);
-        let r = Self::try_calculate(arr, |&x|x).unwrap();
+        let r = Self::calculate(arr, |&x|x);
         r
     }
     
-    pub fn combine2(&self, rhs: &Self)-> Self{
-        let mut arr = self.get_array();
-        rhs.apply(&mut arr);
-        let r = Self::try_calculate(arr, |&x|x).unwrap();
-        r
-    }
+    // pub fn combine2(&self, rhs: &Self)-> Self{
+    //     let mut arr = self.get_array();
+    //     rhs.apply(&mut arr);
+    //     let r = Self::try_calculate(arr, |&x|x).unwrap();
+    //     r
+    // }
 
     pub fn invert(&self) -> Self {
         let mut swaps = self.get_swaps();
