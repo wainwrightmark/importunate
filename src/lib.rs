@@ -478,10 +478,6 @@ mod tests {
             pub fn $name() {
                 let permutation = Permutation::<$inner, $max_elements>::get_max();
 
-                // let mut arr = Permutation::<$inner, $max_elements>::DEFAULT_ARRAY;
-                // permutation.apply(&mut arr);
-                // println!("{arr:?}");
-
                 //This orders arrays like [3,0,1,2] - effectively rotating them
                 let index_of_0 = permutation.index_of(&0, |&x| x);
                 assert_eq!(index_of_0, 1);
