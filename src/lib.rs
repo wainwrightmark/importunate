@@ -37,10 +37,13 @@
 // index of element
 // documentation
 
+pub mod inner;
+
 use core::fmt::Debug;
 use core::hash::Hash;
 use core::ops::Range;
 
+use inner::Inner;
 use num::{Integer, Unsigned};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -49,95 +52,18 @@ use static_assertions::const_assert;
 /// A permutation
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Permutation<Inner: PermutationInner, const ELEMENTS: usize>(Inner);
+pub struct Permutation<I: Inner, const ELEMENTS: usize>(I);
 
-/// The inner type of a permutation
-pub trait PermutationInner:
-    Copy
-    + Clone
-    + Debug
-    + PartialEq
-    + Eq
-    + Hash
-    + Default
-    + Unsigned
-    + Integer
-    + TryFrom<usize>
-    + TryInto<usize>
-    + core::iter::Product
-{
-    const MAX_ELEMENTS: usize;
-
-    fn get_permutation_max(elements: usize) -> Self {
-        debug_assert!(elements <= elements);
-        if elements == 0 {
-            return Self::one();
-        }
-        let num: Self = elements.try_into().ok().unwrap();
-
-        let mut max = Self::one();
-        let mut s = Self::one();
-        while s <= num {
-            max = max * s;
-            s = s + Self::one();
-        }
-        max
-    }
-
-    fn get_permutation_range(elements: usize) -> Range<Self> {
-        Self::zero()..(Self::get_permutation_max(elements))
-    }
-
-    fn get_factorial(n: usize) -> Self;
-}
-
-macro_rules! impl_permutation_inner {
-    ($inner:ty, $max_elements:tt, $arr_len: tt ) => {
-        impl PermutationInner for $inner {
-            const MAX_ELEMENTS: usize = $max_elements;
-
-            fn get_factorial(n: usize) -> Self {
-                const fn make_arr() -> [$inner; $arr_len] {
-                    let mut arr = [0; $arr_len];
-                    let mut i = 0;
-                    while i < $arr_len {
-                        arr[i] = factorial(i as $inner);
-                        i = i + 1;
-                    }
-                    arr
-                }
-
-                const fn factorial(i: $inner) -> $inner {
-                    match i {
-                        0 => 1,
-                        1 => 1,
-                        _ => i * (factorial(i - 1)),
-                    }
-                }
-
-                const FACTORIALS: [$inner; $arr_len] = make_arr();
-                FACTORIALS[n]
-            }
-        }
-    };
-}
-
-impl_permutation_inner!(u8, 5, 6);
-impl_permutation_inner!(u16, 8, 9);
-impl_permutation_inner!(u32, 12, 13);
-impl_permutation_inner!(u64, 20, 21);
-impl_permutation_inner!(u128, 34, 35);
-
-impl<Inner: PermutationInner, const Elements: usize> From<Inner> for Permutation<Inner, Elements> {
-    fn from(value: Inner) -> Self {
-        debug_assert!(Elements <= Inner::MAX_ELEMENTS);
+impl<I: Inner, const Elements: usize> From<I> for Permutation<I, Elements> {
+    fn from(value: I) -> Self {
+        debug_assert!(Elements <= I::MAX_ELEMENTS);
         Self(value)
     }
 }
 
-impl<Inner: PermutationInner, const Elements: usize> Default for Permutation<Inner, Elements> {
+impl<I: Inner, const Elements: usize> Default for Permutation<I, Elements> {
     fn default() -> Self {
-        debug_assert!(Elements <= Inner::MAX_ELEMENTS);
+        debug_assert!(Elements <= I::MAX_ELEMENTS);
         Self(Default::default())
     }
 }
@@ -151,7 +77,7 @@ fn get_index_of(arr: &[usize], e: usize) -> usize {
     panic!("Could not find index {e}")
 }
 
-impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements> {
+impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
     /// Apply this permutation to an array, reordering the first `Elements` elements
     pub fn apply<T>(&self, arr: &mut [T]) {
         let mut rem = self.0;
@@ -167,6 +93,11 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
         }
     }
 
+    /// The range of all possible permutations of this number of elements
+    pub fn all() -> impl Iterator<Item = Self> {
+        let range = I::get_permutation_range(Elements);
+        range.map(|x| Self(x))
+    }
     fn get_swaps(&self) -> [usize; Elements] {
         let mut swaps = [0; Elements];
 
@@ -184,8 +115,8 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
     }
 
     fn from_swaps(swaps: &[usize; Elements]) -> Self {
-        let mut inner: Inner = Inner::zero();
-        let mut mult: Inner = Inner::one();
+        let mut inner: I = I::zero();
+        let mut mult: I = I::one();
         for i in 0..Elements {
             let r = mult * swaps[i].try_into().ok().unwrap();
             inner = inner + r;
@@ -196,31 +127,31 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
     }
 
     //e.g. 1,4,12,24 or 1,5,20,60,120
-    fn get_backtorial(n: usize) -> Inner {
-        let mut m: Inner = Elements.try_into().ok().unwrap();
-        let mut total: Inner = Inner::one();
+    fn get_backtorial(n: usize) -> I {
+        let mut m: I = Elements.try_into().ok().unwrap();
+        let mut total: I = I::one();
         for _ in 0..n {
             total = total * m;
-            m = m - Inner::one();
+            m = m - I::one();
         }
         total
     }
 
-    fn test_unique(arr: impl Iterator<Item = usize>)-> bool{
+    fn test_unique(arr: impl Iterator<Item = usize>) -> bool {
         let mut test = 0u64;
 
-        for x in arr.take(Elements){
+        for x in arr.take(Elements) {
             test = test | 1 << x;
         }
 
-        let r =test.count_ones() as usize == Elements;
+        let r = test.count_ones() as usize == Elements;
         r
     }
 
     pub fn calculate<T, F: Fn(&T) -> usize>(mut arr: [T; Elements], f: F) -> Self {
-        debug_assert!(Self::test_unique(arr.iter().map(|x| f(x)) ));
-        let mut slot_multiplier: Inner = Inner::one();
-        let mut inner: Inner = Inner::zero();
+        debug_assert!(Self::test_unique(arr.iter().map(|x| f(x))));
+        let mut slot_multiplier: I = I::one();
+        let mut inner: I = I::zero();
         'outer: for index in (0..Elements) {
             let mut swap_element = f(&arr[index]);
 
@@ -235,15 +166,14 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
 
                             arr.swap(index, index + diff);
 
-                            let change =
-                                (slot_multiplier * (Inner::try_from(amount).ok().unwrap()));
+                            let change = (slot_multiplier * (I::try_from(amount).ok().unwrap()));
                             inner = inner + change;
                             break 'inner;
                         }
                     }
                 }
             }
-            slot_multiplier = slot_multiplier * Inner::try_from((Elements - index)).ok().unwrap();
+            slot_multiplier = slot_multiplier * I::try_from((Elements - index)).ok().unwrap();
         }
         Self(inner)
     }
@@ -251,7 +181,7 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
     /// Calculate the permutation of an array
     /// Beware: if the array contains duplicate elements, this may loop forever
     pub fn try_calculate<T, F: Fn(&T) -> usize>(mut arr: [T; Elements], f: F) -> Option<Self> {
-        if !Self::test_unique(arr.iter().map(|x| f(x)) ){
+        if !Self::test_unique(arr.iter().map(|x| f(x))) {
             return None;
         }
         Some(Self::calculate(arr, f))
@@ -260,8 +190,8 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
     pub fn element_at_index<T, F: Fn(usize) -> T>(&self, new_index: usize, f: F) -> T {
         debug_assert!(new_index < Elements);
         let mut current_index = new_index;
-        let mut fact: Inner = Self::get_backtorial(current_index);
-        let mut rem: Inner = self.0;
+        let mut fact: I = Self::get_backtorial(current_index);
+        let mut rem: I = self.0;
 
         let mut watch_index = if current_index + 1 == Elements {
             current_index
@@ -310,13 +240,13 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
         arr
     }
 
-    pub fn combine(&self, rhs: &Self)-> Self{
+    pub fn combine(&self, rhs: &Self) -> Self {
         let mut arr = self.get_array();
         rhs.apply(&mut arr);
-        let r = Self::calculate(arr, |&x|x);
+        let r = Self::calculate(arr, |&x| x);
         r
     }
-    
+
     // pub fn combine2(&self, rhs: &Self)-> Self{
     //     let mut arr = self.get_array();
     //     rhs.apply(&mut arr);
@@ -344,7 +274,7 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
             }
         }
 
-        if updated == 0{
+        if updated == 0 {
             return self.clone();
         }
 
@@ -379,8 +309,8 @@ impl<Inner: PermutationInner, const Elements: usize> Permutation<Inner, Elements
     }
 
     pub fn get_max() -> Self {
-        let inner = Inner::get_factorial(Elements);
-        Self(inner - Inner::one())
+        let inner = I::get_factorial(Elements);
+        Self(inner - I::one())
     }
 }
 
@@ -393,53 +323,50 @@ mod tests {
     use itertools::Itertools;
     use ntest::test_case;
 
-    use crate::{Permutation, PermutationInner};
+    use crate::{Inner, Permutation};
 
     #[test]
     pub fn test_swaps() {
-        let range: Range<u8> = PermutationInner::get_permutation_range(4);
-        for o in range {
-            let ordering: Permutation<u8, 4> = o.into();
-
-            let swaps = ordering.get_swaps();
+        for permutation in Permutation::<u8, 4>::all() {
+            let swaps = permutation.get_swaps();
             let ordering2 = Permutation::<u8, 4>::from_swaps(&swaps);
 
-            assert_eq!(ordering, ordering2)
+            assert_eq!(permutation, ordering2)
         }
     }
 
     #[test]
     pub fn test_combine() {
-        let range1: Range<u8> = PermutationInner::get_permutation_range(4);
-        
-        
-        for o_left in range1 {
-            let p_left: Permutation<u8, 4> = o_left.into();
-            let range2: Range<u8> = PermutationInner::get_permutation_range(4);
-            for o_right in range2 {
-                let p_right: Permutation<u8, 4> = o_right.into();
+        for p_left in Permutation::<u8, 4>::all() {
+            for p_right in Permutation::<u8, 4>::all() {
                 let combined = p_left.combine(&p_right);
-                let o_comb = combined.0;
 
-                println!("{o_left:>2} + {o_right:>2} = {o_comb:>2}; {:?} + {:?} = {:?}",p_left.get_swaps(), p_right.get_swaps(), combined.get_swaps());
-
+                println!(
+                    "{:>2} + {:>2} = {:>2}; {:?} + {:?} = {:?}",
+                    p_left.0,
+                    p_right.0,
+                    combined.0,
+                    p_left.get_swaps(),
+                    p_right.get_swaps(),
+                    combined.get_swaps()
+                );
             }
-            
         }
     }
 
     #[test]
     pub fn test_invert() {
-        let range: Range<u8> = PermutationInner::get_permutation_range(4);
-
-        for o in range {
-            let ordering: Permutation<u8, 4> = o.into();
-
-            let arr = ordering.get_array();
-            let inverse = ordering.invert();
+        for permutation in Permutation::<u8, 4>::all() {
+            let arr = permutation.get_array();
+            let inverse = permutation.invert();
             let inverse_arr = inverse.get_array();
 
-            println!("{}:  {:?} {:?}",ordering.0, ordering.get_swaps(), inverse.get_swaps());
+            println!(
+                "{}:  {:?} {:?}",
+                permutation.0,
+                permutation.get_swaps(),
+                inverse.get_swaps()
+            );
 
             let mut arr2 = arr.clone();
             inverse.apply(&mut arr2);
@@ -449,45 +376,21 @@ mod tests {
         }
     }
 
-    // #[test]
-    // pub fn test_invert3() {
-    //     let range: Range<u8> = PermutationInner::get_permutation_range(3);
-
-    //     for o in range {
-    //         let ordering: Permutation<u8, 3> = o.into();
-
-    //         let arr = ordering.get_array();
-    //         let inverse = ordering.invert();
-    //         let inverse_arr = inverse.get_array();
-
-    //         println!("{:?} {:?}", ordering.get_swaps(), inverse.get_swaps());
-
-    //         let mut arr2 = arr.clone();
-    //         inverse.apply(&mut arr2);
-    //         let new_perm = Permutation::<u8, 3>::try_calculate(arr2, |&x| x).unwrap();
-
-    //         assert_eq!(0, new_perm.0)
-    //     }
-    // }
-
     #[test]
     pub fn test_element_at_index() {
-        let range: Range<u8> = PermutationInner::get_permutation_range(4);
-
-        for o in range {
-            let ordering: Permutation<u8, 4> = o.into();
+        for perm in Permutation::<u8, 4>::all() {
             let mut arr = [0, 1, 2, 3];
-            ordering.apply(&mut arr);
+            perm.apply(&mut arr);
 
             println!("");
             println!("");
-            println!("{arr:?} :: {}", ordering.0);
+            println!("{arr:?} :: {}", perm.0);
             let mut arr2 = [0, 1, 2, 3];
 
             for index in 0..4 {
                 println!("");
                 println!("Index: {index}");
-                let element = ordering.element_at_index(index, |x| x);
+                let element = perm.element_at_index(index, |x| x);
                 println!("Element: {element}");
                 arr2[index] = element;
             }
@@ -498,12 +401,9 @@ mod tests {
 
     #[test]
     pub fn test_index_of() {
-        let range: Range<u8> = PermutationInner::get_permutation_range(4);
-
-        for o in range {
-            let ordering: Permutation<u8, 4> = o.into();
+        for perm in Permutation::<u8, 4>::all() {
             let mut arr = [0, 1, 2, 3];
-            ordering.apply(&mut arr);
+            perm.apply(&mut arr);
 
             let mut arr1 = [0, 1, 2, 3];
             let mut arr2 = [0, 1, 2, 3];
@@ -517,7 +417,7 @@ mod tests {
                     .unwrap()
                     .0;
 
-                arr2[index] = ordering.index_of(&index, |&x| x);
+                arr2[index] = perm.index_of(&index, |&x| x);
             }
 
             assert_eq!(arr1, arr2)
@@ -526,15 +426,10 @@ mod tests {
 
     #[test]
     pub fn all_possible_orderings_are_unique() -> Result<(), anyhow::Error> {
-        let mut set: HashSet<[i32; 4]> = Default::default();
+        let mut set: HashSet<[usize; 4]> = Default::default();
 
-        let range: Range<u8> = PermutationInner::get_permutation_range(4);
-
-        for o in range {
-            let ordering: Permutation<u8, 4> = o.into();
-            let mut arr = [0, 1, 2, 3];
-            ordering.apply(&mut arr);
-
+        for perm in Permutation::<u8, 4>::all() {
+            let arr = perm.get_array();
             println!("{arr:?}");
 
             let added = set.insert(arr);
@@ -548,16 +443,12 @@ mod tests {
 
     #[test]
     pub fn test_calculate() {
-        let range: Range<u8> = PermutationInner::get_permutation_range(4);
-
-        for o in range {
-            let ordering: Permutation<u8, 4> = o.into();
-            let mut arr: [usize; 4] = [0, 1, 2, 3];
-            ordering.apply(&mut arr);
+        for perm in Permutation::<u8, 4>::all() {
+            let arr = perm.get_array();
             println!("{arr:?}");
             let calculated = Permutation::<u8, 4>::try_calculate(arr, |x| *x).unwrap();
 
-            assert_eq!(ordering, calculated)
+            assert_eq!(perm, calculated)
         }
     }
 
