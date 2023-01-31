@@ -39,15 +39,14 @@
 
 pub mod inner;
 
-use core::fmt::Debug;
 use core::hash::Hash;
 use core::ops::Range;
+use core::{cmp::Ordering, fmt::Debug};
 
 use inner::Inner;
 use num::{Integer, Unsigned};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use static_assertions::const_assert;
 
 /// A permutation
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
@@ -247,12 +246,93 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
         r
     }
 
-    // pub fn combine2(&self, rhs: &Self)-> Self{
-    //     let mut arr = self.get_array();
-    //     rhs.apply(&mut arr);
-    //     let r = Self::try_calculate(arr, |&x|x).unwrap();
-    //     r
+    // pub fn combine2(&self, rhs: &Self) -> Self {
+    //     let mut left_swaps = self.get_swaps();
+    //     let mut right_swaps = rhs.get_swaps();
+
+    //     for (i, &diff) in right_swaps.iter().enumerate() {
+    //         Self::swap_swaps(&mut left_swaps[i..], diff)
+    //     }
+
+    //     Self::from_swaps(&left_swaps)
     // }
+
+    // fn swap_swaps( swaps: &mut [usize], diff: usize) {
+    //     if diff == 0 {
+    //         return;
+    //     }
+
+    //     let a_target = Self::find_what_swaps_with(swaps, 0);
+    //     let b_target = Self::find_what_swaps_with(swaps, diff);
+
+    //     swaps[0] = b_target;
+
+    //     if a_target == 0{
+
+    //     }
+    //     else if a_target > diff{
+    //         swaps[diff] = a_target - diff;
+    //     }else{
+    //         swaps[a_target] = diff - a_target;
+    //         swaps [diff] = 0;
+    //     }
+
+    // }
+
+    // fn find_what_swaps_with(swaps: &mut [usize], index: usize) -> usize {
+    //     for j in (0..(index)) {
+    //         if j + swaps[j] == index {
+    //             return j;
+    //         }
+    //     }
+
+    //     let mut total = index;
+    //     loop{
+    //         let x = swaps[total];
+    //         if x== 0{
+    //             break;
+    //         }
+    //         total += x;
+    //     }
+    //     return  total;
+    // }
+
+    pub fn to_le_byte_array<const BYTES: usize>(&self) -> [u8; BYTES] {
+        assert!(BYTES >= Self::REQUIRED_BYTES);
+
+        self.0.to_le_byte_array()
+    }
+
+    pub fn from_le_byte_array<const BYTES: usize>(bytes: &[u8; BYTES]) -> Self {
+        assert!(BYTES >= Self::REQUIRED_BYTES);
+
+        let inner = I::from_le_byte_array(bytes);
+        Self(inner)
+    }
+
+    pub const REQUIRED_BYTES: usize = {
+        match Elements {
+            0..=5 => 1,
+            ..=8 => 2,
+            ..=10 => 3,
+            ..=12 => 4,
+            ..=14 => 5,
+            ..=16 => 6,
+            ..=18 => 7,
+            ..=20 => 8,
+            ..=22 => 9,
+            ..=24 => 10,
+            ..=25 => 11,
+            ..=27 => 12,
+            ..=29 => 13,
+            ..=30 => 14,
+            ..=32 => 15,
+            ..=34 => 16,
+            _ => {
+                panic!("Elements is too big")
+            }
+        }
+    };
 
     pub fn invert(&self) -> Self {
         let mut swaps = self.get_swaps();
@@ -326,6 +406,16 @@ mod tests {
     use crate::{Inner, Permutation};
 
     #[test]
+    pub fn test_bytes(){
+        for perm in Permutation::<u32, 10>::all(){
+            let bytes: [u8;3] = perm.to_le_byte_array();
+
+            let perm2 = Permutation::<u32, 10>::from_le_byte_array(&bytes);
+            assert_eq!(perm, perm2)
+        }
+    }
+
+    #[test]
     pub fn test_swaps() {
         for permutation in Permutation::<u8, 4>::all() {
             let swaps = permutation.get_swaps();
@@ -335,23 +425,43 @@ mod tests {
         }
     }
 
+    // #[test]
+    // pub fn test_combine2(){
+    //     let p_left = Permutation::<u8, 4>(5);
+    //     let p_right = Permutation::<u8, 4>(1);
+
+    //     let combined = p_left.combine2(&p_right);
+    //     println!("{combined:?}");
+    //     panic!("End of test")
+    // }
+
     #[test]
     pub fn test_combine() {
+        let mut combinations = [Permutation::<u8, 4>::default(); 576];
+        let mut i = 0;
         for p_left in Permutation::<u8, 4>::all() {
             for p_right in Permutation::<u8, 4>::all() {
-                let combined = p_left.combine(&p_right);
+                let combined1 = p_left.combine(&p_right);
+                //let combined2 = p_left.combine2(&p_right);
+                combinations[i] = combined1;
+                i += 1;
+                // println!(
+                //     "{:>2} + {:>2} = {:>2}; {:?} + {:?} = {:?}",
+                //     p_left.0,
+                //     p_right.0,
+                //     combined1.0,
+                //     p_left.get_swaps(),
+                //     p_right.get_swaps(),
+                //     combined1.get_swaps()
+                // );
 
-                println!(
-                    "{:>2} + {:>2} = {:>2}; {:?} + {:?} = {:?}",
-                    p_left.0,
-                    p_right.0,
-                    combined.0,
-                    p_left.get_swaps(),
-                    p_right.get_swaps(),
-                    combined.get_swaps()
-                );
+                // assert_eq!(combined1.get_swaps(), combined2.get_swaps())
             }
         }
+
+        insta::assert_snapshot!(combinations
+            .map(|x| format!("{:?}", x.get_swaps()))
+            .join("\n"))
     }
 
     #[test]

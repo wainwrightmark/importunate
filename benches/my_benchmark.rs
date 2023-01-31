@@ -4,6 +4,16 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use importunate::{inner::Inner, *};
 
 pub fn criterion_benchmark(c: &mut Criterion) {
+
+    bench_combine::<u8, 5>(c);
+    bench_combine::<u128, 5>(c);
+    bench_combine::<u16, 8>(c);
+    bench_combine::<u32, 12>(c);
+    bench_combine::<u64, 15>(c);
+    bench_combine::<u64, 20>(c);
+    bench_combine::<u128, 34>(c);
+
+
     bench_calculate::<u8, 5>(c);
     bench_calculate::<u128, 5>(c);
     bench_calculate::<u16, 8>(c);
@@ -11,6 +21,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     bench_calculate::<u64, 15>(c);
     bench_calculate::<u64, 20>(c);
     bench_calculate::<u128, 34>(c);
+
 
 
     bench_apply::<u8, 5>(c);
@@ -57,10 +68,21 @@ fn bench_calculate<I: Inner, const SIZE: usize>(c: &mut Criterion) {
     c.bench_function(
         format!("calculate {} {SIZE}", type_name::<I>()).as_str(),
         |b| {
-            let mut arr: [usize; SIZE] = core::array::from_fn(|x| x);
+            let mut arr: [usize; SIZE] = Permutation::<I, SIZE>::default().get_array();
             arr.reverse();
             let test_arr = arr;
             b.iter(|| calculate::<I, SIZE>(black_box(test_arr)))
+        },
+    );
+}
+
+fn bench_combine<I: Inner, const SIZE: usize>(c: &mut Criterion) {
+    c.bench_function(
+        format!("combine {} {SIZE}", type_name::<I>()).as_str(),
+        |b| {
+            let lhs = Permutation::<I, SIZE>::get_max();
+            let rhs = Permutation::<I, SIZE>::get_max();
+            b.iter(|| combine::<I, SIZE>(black_box(lhs), black_box(&rhs)))
         },
     );
 }
@@ -90,5 +112,14 @@ fn old_index<I: Inner, const SIZE: usize>(
 ) -> usize {
     permutation.element_at_index(index, |x| x)
 }
+
+
+fn combine<I: Inner, const SIZE: usize>(
+    lhs: Permutation<I, SIZE>,
+    rhs: &Permutation<I, SIZE>,
+) -> Permutation<I, SIZE> {
+    lhs.combine(rhs)
+}
+
 criterion_group!(benches, criterion_benchmark);
 criterion_main!(benches);
