@@ -47,6 +47,7 @@
 // documentation
 // only rely on num-integer
 // arbitrary
+// optional rand
 
 pub mod inner;
 
@@ -71,6 +72,7 @@ impl<I: Inner, const Elements: usize> From<I> for Permutation<I, Elements> {
     }
 }
 
+
 impl<I: Inner, const Elements: usize> Default for Permutation<I, Elements> {
     fn default() -> Self {
         debug_assert!(Elements <= I::MAX_ELEMENTS);
@@ -88,6 +90,11 @@ fn get_index_of(arr: &[usize], e: usize) -> usize {
 }
 
 impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
+
+    pub fn inner(&self)-> I{
+        self.0
+    }
+
     /// Apply this permutation to an array, reordering the first `Elements` elements
     pub fn apply<T>(&self, arr: &mut [T]) {
         let mut rem = self.0;
