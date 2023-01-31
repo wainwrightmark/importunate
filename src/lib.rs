@@ -21,6 +21,15 @@
 //! ```
 //! use importunate::*;
 //!
+//! fn main() {
+//! let arr1 = [2,0,1,3];
+//! let mut arr2 = ["zero", "one", "two", "three"];
+//! let perm = Permutation::<u8,4>::calculate(arr1, |&x|x);
+//! perm.apply(&mut arr2);
+//!
+//! assert_eq!(arr2,["two","zero", "one",  "three"] );
+//! }
+//!
 //!
 //! ```
 //!

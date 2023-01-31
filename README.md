@@ -7,9 +7,9 @@
 
 Apply and manipulate permutations of small, constant sized sets.
 
-- Create a `Permutation` and use it later
-- Combine two `Permutation`s with the `+` operator
-- Invert (undo) a `Permutation` with the `-` operator
+- `calculate` a `Permutation` and `apply` it later
+- `combine` two `Permutations
+- `invert` (undo) a `Permutation`
 
 
 `no_std` by default.
@@ -29,12 +29,14 @@ importunate = "0.1.0"
 
 ```rust
 use importunate::*;
-use rand::SeedableRng;
 
 fn main() {
-    let mut rng = rand::rngs::StdRng::seed_from_u64(123);
-    let m =[3,2,1,2,3].iter().choose_max(&mut rng).unwrap();
-    assert_eq!(*m, 3)
+    let arr1 = [2,0,1,3];
+    let mut arr2 = ["zero", "one", "two", "three"];
+    let perm = Permutation::<u8,4>::calculate(&arr1, |&x|x);
+    perm.apply(arr2);
+
+    assert_eq!(arr2,["two","zero", "one",  "three"] );
 }
 ```
 
