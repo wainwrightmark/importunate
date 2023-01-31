@@ -46,6 +46,7 @@
 // more efficient index of element
 // documentation
 // only rely on num-integer
+// arbitrary
 
 pub mod inner;
 
@@ -58,10 +59,10 @@ use num::{Integer, Unsigned};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-/// A permutation
+/// A permutation of a fixed length array
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Permutation<I: Inner, const ELEMENTS: usize>(I);
+pub struct Permutation<I: Inner, const ELEMENTS: usize>(pub I);
 
 impl<I: Inner, const Elements: usize> From<I> for Permutation<I, Elements> {
     fn from(value: I) -> Self {
