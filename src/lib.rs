@@ -42,9 +42,10 @@
 //! [`README.md`]: https://github.com/wainwrightmark/importunate
 
 // TODO
-// multiplication
-// index of element
+// more efficient combine
+// more efficient index of element
 // documentation
+// only rely on num-integer
 
 pub mod inner;
 

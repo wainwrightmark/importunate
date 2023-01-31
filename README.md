@@ -8,7 +8,7 @@
 Apply and manipulate permutations of small, constant sized sets.
 
 - `calculate` a `Permutation` and `apply` it later
-- `combine` two `Permutations
+- `combine` two `Permutation`s
 - `invert` (undo) a `Permutation`
 
 
