@@ -49,7 +49,6 @@
 // arbitrary
 // optional rand
 // errors
-// calculate from unordered incomplete array
 
 pub mod inner;
 
@@ -170,9 +169,9 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
     pub fn calculate_incomplete<T: Ord>(slice: &[T]) -> Self {
         let mut arr = Self::DEFAULT_ARRAY;
 
-        for (index, element) in slice.iter().enumerate() {
+        for (index, element) in slice.iter().take(Elements).enumerate() {
             let mut c = 0;
-            for (jindex, el) in slice.iter().enumerate() {
+            for (jindex, el) in slice.iter().take(Elements).enumerate() {
                 match element.cmp(el) {
                     Ordering::Less => {}
                     Ordering::Equal => {
@@ -465,6 +464,23 @@ mod tests {
         assert_eq!(converted, "aaagmnr")
         // println!("anagram: {anagram:?}");
         // println!("inverted: {converted:?}");
+    }
+
+    #[test]
+    pub fn find_anagrams(){
+        let anagram = Permutation::<u16, 7>::calculate_incomplete("anagram".as_bytes());
+        let admiral = Permutation::<u16, 7>::calculate_incomplete("admiral".as_bytes());
+
+        assert_eq!(anagram, admiral.invert());
+
+        let anagrams = Permutation::<u16, 7>::calculate_incomplete("anagrams".as_bytes());
+
+        assert_eq!(anagram, anagrams);//extra characters are ignored
+
+        let anagr = Permutation::<u16, 5>::calculate_incomplete("anagr".as_bytes());
+        let anag = Permutation::<u16, 5>::calculate_incomplete("anag".as_bytes());
+
+        assert_eq!(anagr, anag);//extra characters are ignored
     }
 
     #[test]
