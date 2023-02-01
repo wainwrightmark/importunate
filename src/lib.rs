@@ -24,7 +24,7 @@
 //! fn main() {
 //! let arr1 = [2,0,1,3];
 //! let mut arr2 = ["zero", "one", "two", "three"];
-//! let perm = Permutation::<u8,4>::calculate(arr1, |&x|x);
+//! let perm = Permutation::<u8,4>::calculate_unchecked(arr1, |&x|x);
 //! perm.apply(&mut arr2);
 //!
 //! assert_eq!(arr2,["two","zero", "one",  "three"] );
@@ -57,7 +57,6 @@ use core::ops::Range;
 use core::{cmp::Ordering, fmt::Debug};
 
 use inner::Inner;
-use num::{Integer, Unsigned};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -186,7 +185,7 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
             arr[index] = c;
         }
 
-        Self::calculate_unchecked(arr, |&x|x)
+        Self::calculate_unchecked(arr, |&x| x)
     }
 
     pub fn calculate_unchecked<T, F: Fn(&T) -> usize>(mut arr: [T; Elements], f: F) -> Self {
@@ -452,14 +451,13 @@ mod tests {
     use crate::{Inner, Permutation};
 
     #[test]
-    pub fn test_calculate_incomplete(){
+    pub fn test_calculate_incomplete() {
         let anagram = Permutation::<u16, 7>::calculate_incomplete("anagram".as_bytes());
 
-
-        let mut to_change =  ("anagram".bytes().collect_vec());
+        let mut to_change = ("anagram".bytes().collect_vec());
         anagram.invert().apply(to_change.as_mut_slice());
 
-        let converted =  String::from_utf8(to_change).unwrap();
+        let converted = String::from_utf8(to_change).unwrap();
 
         assert_eq!(converted, "aaagmnr")
         // println!("anagram: {anagram:?}");
@@ -467,7 +465,7 @@ mod tests {
     }
 
     #[test]
-    pub fn find_anagrams(){
+    pub fn find_anagrams() {
         let anagram = Permutation::<u16, 7>::calculate_incomplete("anagram".as_bytes());
         let admiral = Permutation::<u16, 7>::calculate_incomplete("admiral".as_bytes());
 
@@ -475,12 +473,12 @@ mod tests {
 
         let anagrams = Permutation::<u16, 7>::calculate_incomplete("anagrams".as_bytes());
 
-        assert_eq!(anagram, anagrams);//extra characters are ignored
+        assert_eq!(anagram, anagrams); //extra characters are ignored
 
         let anagr = Permutation::<u16, 5>::calculate_incomplete("anagr".as_bytes());
         let anag = Permutation::<u16, 5>::calculate_incomplete("anag".as_bytes());
 
-        assert_eq!(anagr, anag);//extra characters are ignored
+        assert_eq!(anagr, anag); //extra characters are ignored
     }
 
     #[test]

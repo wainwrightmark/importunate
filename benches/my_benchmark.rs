@@ -4,7 +4,6 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use importunate::{inner::Inner, *};
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-
     bench_combine::<u8, 5>(c);
     bench_combine::<u128, 5>(c);
     bench_combine::<u16, 8>(c);
@@ -13,7 +12,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     bench_combine::<u64, 20>(c);
     bench_combine::<u128, 34>(c);
 
-
     bench_calculate::<u8, 5>(c);
     bench_calculate::<u128, 5>(c);
     bench_calculate::<u16, 8>(c);
@@ -21,8 +19,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     bench_calculate::<u64, 15>(c);
     bench_calculate::<u64, 20>(c);
     bench_calculate::<u128, 34>(c);
-
-
 
     bench_apply::<u8, 5>(c);
     bench_apply::<u128, 5>(c);
@@ -36,8 +32,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
     bench_old_index::<u128, 34>(c, 0);
     bench_old_index::<u128, 34>(c, 33);
-
-
 }
 
 fn bench_old_index<I: Inner, const SIZE: usize>(c: &mut Criterion, index: usize) {
@@ -112,7 +106,6 @@ fn old_index<I: Inner, const SIZE: usize>(
 ) -> usize {
     permutation.element_at_index(index, |x| x)
 }
-
 
 fn combine<I: Inner, const SIZE: usize>(
     lhs: Permutation<I, SIZE>,
