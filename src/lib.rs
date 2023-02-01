@@ -65,6 +65,28 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Permutation<I: Inner, const ELEMENTS: usize>(pub I);
 
+#[cfg(feature = "arbitrary")]
+use arbitrary::Arbitrary;
+#[cfg(feature = "arbitrary")]
+impl<'a, I: Inner, const Elements: usize> Arbitrary<'a> for Permutation<I, Elements> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let bytes = u.bytes(Self::REQUIRED_BYTES)?;
+
+        let inner = I::from_le_byte_array(bytes);
+        let inner = inner.mod_floor(&Self::get_max().0);
+        Ok(Self(inner))
+    }
+
+    fn arbitrary_take_rest(mut u: arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Self::arbitrary(&mut u)
+    }
+
+    fn size_hint(depth: usize) -> (usize, Option<usize>) {
+        let _ = depth;
+        (Self::REQUIRED_BYTES, Some(Self::REQUIRED_BYTES))
+    }
+}
+
 impl<I: Inner, const Elements: usize> From<I> for Permutation<I, Elements> {
     fn from(value: I) -> Self {
         debug_assert!(Elements <= I::MAX_ELEMENTS);
@@ -344,8 +366,8 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
         self.0.to_le_byte_array()
     }
 
-    pub fn try_from_le_byte_array<const BYTES: usize>(bytes: &[u8; BYTES]) -> Option<Self> {
-        assert!(BYTES >= Self::REQUIRED_BYTES);
+    pub fn try_from_le_byte_array(bytes: &[u8]) -> Option<Self> {
+        assert!(bytes.len() >= Self::REQUIRED_BYTES);
 
         let inner = I::from_le_byte_array(bytes);
         if inner <= Self::get_max().0 {

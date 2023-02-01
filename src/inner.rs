@@ -30,7 +30,7 @@ pub trait Inner:
 
     fn to_le_byte_array<const BYTES: usize>(&self) -> [u8; BYTES];
 
-    fn from_le_byte_array<const BYTES: usize>(bytes: &[u8; BYTES]) -> Self;
+    fn from_le_byte_array(bytes: &[u8]) -> Self;
 }
 
 macro_rules! impl_permutation_inner {
@@ -54,10 +54,10 @@ macro_rules! impl_permutation_inner {
                 arr
             }
 
-            fn from_le_byte_array<const BYTES: usize>(bytes: &[u8; BYTES]) -> Self {
+            fn from_le_byte_array(bytes: &[u8]) -> Self {
                 let mut new_bytes = [0; Self::BYTES];
 
-                for i in 0..(bytes.len().min(BYTES)) {
+                for i in 0..(bytes.len().min(Self::BYTES)) {
                     new_bytes[i] = bytes[i]
                 }
 

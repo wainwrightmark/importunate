@@ -28,6 +28,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+arbitrary = {version="1.2.3", optional=true}
 num-integer = { version = "0.1", default-features = false }
 serde = {version = "1.0", features=["derive"], optional = true}
 
@@ -50,3 +51,4 @@ harness = false
 [features]
 std = []
 serde = ["dep:serde"]
+arbitrary = ["dep:arbitrary"]
