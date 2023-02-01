@@ -88,7 +88,7 @@ fn bench_combine<I: Inner, const SIZE: usize>(c: &mut Criterion) {
 }
 
 fn calculate<I: Inner, const SIZE: usize>(arr: [usize; SIZE]) -> Permutation<u64, SIZE> {
-    Permutation::calculate(arr, |&x| x)
+    Permutation::calculate_unchecked(arr, |&x| x)
 }
 
 fn apply<I: Inner, const SIZE: usize>(

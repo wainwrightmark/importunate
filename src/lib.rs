@@ -48,6 +48,8 @@
 // only rely on num-integer
 // arbitrary
 // optional rand
+// errors
+// calculate from unordered incomplete array
 
 pub mod inner;
 
@@ -72,7 +74,6 @@ impl<I: Inner, const Elements: usize> From<I> for Permutation<I, Elements> {
     }
 }
 
-
 impl<I: Inner, const Elements: usize> Default for Permutation<I, Elements> {
     fn default() -> Self {
         debug_assert!(Elements <= I::MAX_ELEMENTS);
@@ -90,8 +91,7 @@ fn get_index_of(arr: &[usize], e: usize) -> usize {
 }
 
 impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
-
-    pub fn inner(&self)-> I{
+    pub fn inner(&self) -> I {
         self.0
     }
 
@@ -165,7 +165,32 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
         r
     }
 
-    pub fn calculate<T, F: Fn(&T) -> usize>(mut arr: [T; Elements], f: F) -> Self {
+    /// Calculate the permutation for any list, even one containing duplicates.
+    /// The performance of this is not so good as it will make n * n comparisons
+    pub fn calculate_incomplete<T: Ord>(slice: &[T]) -> Self {
+        let mut arr = Self::DEFAULT_ARRAY;
+
+        for (index, element) in slice.iter().enumerate() {
+            let mut c = 0;
+            for (jindex, el) in slice.iter().enumerate() {
+                match element.cmp(el) {
+                    Ordering::Less => {}
+                    Ordering::Equal => {
+                        if index > jindex {
+                            c += 1;
+                        } else {
+                        }
+                    }
+                    Ordering::Greater => c += 1,
+                }
+            }
+            arr[index] = c;
+        }
+
+        Self::calculate_unchecked(arr, |&x|x)
+    }
+
+    pub fn calculate_unchecked<T, F: Fn(&T) -> usize>(mut arr: [T; Elements], f: F) -> Self {
         debug_assert!(Self::test_unique(arr.iter().map(|x| f(x))));
         let mut slot_multiplier: I = I::one();
         let mut inner: I = I::zero();
@@ -201,7 +226,7 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
         if !Self::test_unique(arr.iter().map(|x| f(x))) {
             return None;
         }
-        Some(Self::calculate(arr, f))
+        Some(Self::calculate_unchecked(arr, f))
     }
 
     pub fn element_at_index<T, F: Fn(usize) -> T>(&self, new_index: usize, f: F) -> T {
@@ -260,7 +285,7 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
     pub fn combine(&self, rhs: &Self) -> Self {
         let mut arr = self.get_array();
         rhs.apply(&mut arr);
-        let r = Self::calculate(arr, |&x| x);
+        let r = Self::calculate_unchecked(arr, |&x| x);
         r
     }
 
@@ -321,11 +346,15 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
         self.0.to_le_byte_array()
     }
 
-    pub fn from_le_byte_array<const BYTES: usize>(bytes: &[u8; BYTES]) -> Self {
+    pub fn try_from_le_byte_array<const BYTES: usize>(bytes: &[u8; BYTES]) -> Option<Self> {
         assert!(BYTES >= Self::REQUIRED_BYTES);
 
         let inner = I::from_le_byte_array(bytes);
-        Self(inner)
+        if inner <= Self::get_max().0 {
+            Self(inner).into()
+        } else {
+            None
+        }
     }
 
     pub const REQUIRED_BYTES: usize = {
@@ -424,11 +453,26 @@ mod tests {
     use crate::{Inner, Permutation};
 
     #[test]
-    pub fn test_bytes(){
-        for perm in Permutation::<u32, 10>::all(){
-            let bytes: [u8;3] = perm.to_le_byte_array();
+    pub fn test_calculate_incomplete(){
+        let anagram = Permutation::<u16, 7>::calculate_incomplete("anagram".as_bytes());
 
-            let perm2 = Permutation::<u32, 10>::from_le_byte_array(&bytes);
+
+        let mut to_change =  ("anagram".bytes().collect_vec());
+        anagram.invert().apply(to_change.as_mut_slice());
+
+        let converted =  String::from_utf8(to_change).unwrap();
+
+        assert_eq!(converted, "aaagmnr")
+        // println!("anagram: {anagram:?}");
+        // println!("inverted: {converted:?}");
+    }
+
+    #[test]
+    pub fn test_bytes() {
+        for perm in Permutation::<u32, 10>::all() {
+            let bytes: [u8; 3] = perm.to_le_byte_array();
+
+            let perm2 = Permutation::<u32, 10>::try_from_le_byte_array(&bytes).unwrap();
             assert_eq!(perm, perm2)
         }
     }
