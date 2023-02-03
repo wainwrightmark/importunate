@@ -40,10 +40,10 @@ insta = "1" # default features needed for testing
 # tabled = "0.4.2"
 # indoc = "1.0.4"
 criterion = "0.4"
-anyhow="*"
-ntest= "*"
-itertools="*"
-serde_test="*"
+anyhow="1"
+ntest= "0.9"
+itertools="0.10"
+serde_test="1"
 serde = {version = "1.0", features=["derive"]}
 
 [[bench]]
