@@ -55,15 +55,15 @@ use core::ops::Range;
 use core::{cmp::Ordering, fmt::Debug};
 
 use inner::Inner;
-#[cfg(feature = "serde")]
+#[cfg(any(test, feature = "serde"))]
 use serde::{Deserialize, Serialize};
 
 /// A permutation of a fixed length array
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(any(test, feature = "serde"), derive(Serialize), serde(transparent))]
 pub struct Permutation<I: Inner, const Elements: usize>(I);
 
-#[cfg(feature = "serde")]
+#[cfg(any(test, feature = "serde"))]
 impl<'de, I: Inner + Deserialize<'de>, const Elements: usize> Deserialize<'de>
     for Permutation<I, Elements>
 {
@@ -73,10 +73,12 @@ impl<'de, I: Inner + Deserialize<'de>, const Elements: usize> Deserialize<'de>
     {
         debug_assert!(Elements <= I::MAX_ELEMENTS);
         let i = I::deserialize(deserializer)?;
-        if i > Self::get_max().0{
-            return Err(serde::de::Error::custom(format!("number out of range: {:?}", i)));
+        if i > Self::get_max().0 {
+            return Err(serde::de::Error::custom(format!(
+                "number out of range: {:?}",
+                i
+            )));
         }
-
 
         Ok(Self(i))
     }
@@ -718,4 +720,12 @@ mod tests {
     test_max!(test_max_u32, u32, 12);
     test_max!(test_max_u64, u64, 20);
     test_max!(test_max_u128, u128, 34);
+
+    #[test]
+    fn test_ser_de() {
+        use serde_test::*;
+        let perm = Permutation::<u8,4> ::calculate_incomplete(&[2,0,1,3]);
+
+        assert_tokens(&perm, &[ Token::U8(6)])
+    }
 }
