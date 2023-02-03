@@ -122,9 +122,7 @@ impl<I: Inner, const ELEMENTS: usize> Default for Permutation<I, ELEMENTS> {
     }
 }
 
-
 impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
-
     #[must_use]
     /// The inner value of this permutation
     pub fn inner(&self) -> I {
@@ -181,7 +179,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     }
 
     #[must_use]
-    fn test_unique(iterator: impl Iterator<Item = usize>) -> bool {
+    fn test_unique(iterator: impl Iterator<Item = u8>) -> bool {
         let mut test = 0u64;
 
         for x in iterator.take(ELEMENTS) {
@@ -214,38 +212,38 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
             arr[index] = c;
         }
 
-        Self::calculate_unchecked(arr, |&x| x)
+        Self::calculate_unchecked(arr, |&x| x as u8)
     }
 
     /// Calculate the permutation of an array.
     /// This will panic or loop forever if the arrays elements contain duplicates or elements outsize `0..ELEMENTS`
     #[must_use]
-    pub fn calculate_unchecked<T, F: Fn(&T) -> usize>(mut arr: [T; ELEMENTS], f: F) -> Self {
+    pub fn calculate_unchecked<T, F: Fn(&T) -> u8>(mut arr: [T; ELEMENTS], f: F) -> Self {
         debug_assert!(Self::test_unique(arr.iter().map(|x| f(x))));
         let mut slot_multiplier: I = I::one();
         let mut inner: I = I::zero();
-        for index in 0..ELEMENTS {
-            let mut swap_element = f(&arr[index]);
+        for index in 0..(ELEMENTS as u8) {
+            let mut swap_element = f(&arr[usize::from(index)]);
 
             'inner: loop {
                 match swap_element.checked_sub(index) {
                     None => unreachable!(), //Array is invalid
                     Some(0) => break 'inner,
                     Some(diff) => {
-                        swap_element = f(&arr[swap_element]);
+                        swap_element = f(&arr[usize::from(swap_element)]);
                         if swap_element == index {
-                            let amount = f(&arr[index]) - index;
+                            let amount = f(&arr[usize::from(index)]) - index;
 
-                            arr.swap(index, index + diff);
+                            arr.swap(index.into(), (index + diff).into());
 
-                            let change = slot_multiplier * (I::try_from(amount).ok().unwrap());
+                            let change = slot_multiplier * (I::from(amount));
                             inner = inner + change;
                             break 'inner;
                         }
                     }
                 }
             }
-            slot_multiplier = slot_multiplier * I::try_from(ELEMENTS - index).ok().unwrap();
+            slot_multiplier = slot_multiplier * I::from((ELEMENTS as u8) - index);
         }
         Self(inner)
     }
@@ -253,7 +251,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     #[must_use]
     /// Calculate the permutation of an array
     /// This will return `None` if the array's elements contain duplicates or elements outsize `0..ELEMENTS`
-    pub fn try_calculate<T, F: Fn(&T) -> usize>(arr: [T; ELEMENTS], f: F) -> Option<Self> {
+    pub fn try_calculate<T, F: Fn(&T) -> u8>(arr: [T; ELEMENTS], f: F) -> Option<Self> {
         if !Self::test_unique(arr.iter().map(|x| f(x))) {
             return None;
         }
@@ -262,16 +260,16 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
 
     #[must_use]
     /// Get the element at the given index of the permutation
-    pub fn element_at_index<T, F: Fn(usize) -> T>(&self, new_index: usize, f: F) -> T {
-        debug_assert!(new_index < ELEMENTS);
+    pub fn element_at_index<T, F: Fn(u8) -> T>(&self, new_index: u8, f: F) -> T {
+        debug_assert!((new_index as usize) < ELEMENTS);
 
         let mut swaps = [0; ELEMENTS];
 
-        for (i, swap) in self.swaps().enumerate().take(new_index + 1) {
+        for (i, swap) in self.swaps().enumerate().take((new_index + 1) as usize) {
             swaps[i] = swap;
         }
 
-        let old_index = Self::element_at_index_from_swaps(&swaps, new_index as u8);
+        let old_index = Self::element_at_index_from_swaps(&swaps, new_index);
 
         f(old_index.into())
     }
@@ -317,11 +315,11 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         return index;
     }
 
-    const DEFAULT_ARRAY: [usize; ELEMENTS] = {
-        let mut arr = [0usize; ELEMENTS];
-        let mut i = 0;
-        while i < ELEMENTS {
-            arr[i] = i;
+    const DEFAULT_ARRAY: [u8; ELEMENTS] = {
+        let mut arr = [0u8; ELEMENTS];
+        let mut i: u8 = 0;
+        while i < (ELEMENTS as u8) {
+            arr[i as usize] = i;
             i += 1;
         }
         arr
@@ -329,12 +327,11 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
 
     #[must_use]
     /// Get the complete array of this permutation's elements
-    pub fn get_array(&self) -> [usize; ELEMENTS] {
+    pub fn get_array(&self) -> [u8; ELEMENTS] {
         let mut arr = Self::DEFAULT_ARRAY;
         self.apply(&mut arr);
         arr
     }
-
 
     #[must_use]
     /// Write this permutation to a byte array
@@ -345,7 +342,6 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
 
         self.0.to_le_byte_array()
     }
-
 
     #[must_use]
     /// Read this permutation from a byte array
@@ -410,7 +406,8 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
             }
         }
 
-        if !is_different { //A great many permutations are their own inverses, so we can skip calculating if that is the case
+        if !is_different {
+            //A great many permutations are their own inverses, so we can skip calculating if that is the case
             return self.clone();
         }
 
@@ -423,7 +420,6 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         let inner = I::get_factorial(ELEMENTS);
         Self(inner - I::one())
     }
-
 
     #[must_use]
     /// Combine this permutation with another. Producing a permutation equivalent to performing this and then the other.
@@ -585,7 +581,7 @@ mod tests {
                 println!("Index: {index}");
                 let element = perm.element_at_index(index, |x| x);
                 println!("Element: {element}");
-                arr2[index] = element;
+                arr2[(index as usize)] = element;
             }
 
             assert_eq!(arr, arr2);
@@ -619,7 +615,7 @@ mod tests {
 
     #[test]
     pub fn all_possible_orderings_are_unique() -> Result<(), anyhow::Error> {
-        let mut set: HashSet<[usize; 4]> = Default::default();
+        let mut set: HashSet<[u8; 4]> = Default::default();
 
         for perm in Permutation::<u8, 4>::all() {
             let arr = perm.get_array();

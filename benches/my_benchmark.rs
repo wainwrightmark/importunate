@@ -36,7 +36,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
 }
 
-fn bench_old_index<I: Inner, const SIZE: usize>(c: &mut Criterion, index: usize) {
+fn bench_old_index<I: Inner, const SIZE: usize>(c: &mut Criterion, index: u8) {
     c.bench_function(format!("old index {SIZE} {index}").as_str(), |b| {
         let perm = Permutation::<I, SIZE>::get_last();
 
@@ -64,7 +64,7 @@ fn bench_calculate<I: Inner, const SIZE: usize>(c: &mut Criterion) {
     c.bench_function(
         format!("calculate {} {SIZE}", type_name::<I>()).as_str(),
         |b| {
-            let mut arr: [usize; SIZE] = Permutation::<I, SIZE>::default().get_array();
+            let mut arr: [u8; SIZE] = Permutation::<I, SIZE>::default().get_array();
             arr.reverse();
             let test_arr = arr;
             b.iter(|| calculate::<I, SIZE>(black_box(test_arr)))
@@ -83,14 +83,14 @@ fn bench_combine<I: Inner, const SIZE: usize>(c: &mut Criterion) {
     );
 }
 
-fn calculate<I: Inner, const SIZE: usize>(arr: [usize; SIZE]) -> Permutation<u64, SIZE> {
+fn calculate<I: Inner, const SIZE: usize>(arr: [u8; SIZE]) -> Permutation<u64, SIZE> {
     Permutation::calculate_unchecked(arr, |&x| x)
 }
 
 fn apply<I: Inner, const SIZE: usize>(
-    mut arr: [usize; SIZE],
+    mut arr: [u8; SIZE],
     permutation: Permutation<I, SIZE>,
-) -> [usize; SIZE] {
+) -> [u8; SIZE] {
     permutation.apply(&mut arr);
     arr
 }
@@ -104,8 +104,8 @@ fn new_index<I: Inner, const SIZE: usize>(
 
 fn old_index<I: Inner, const SIZE: usize>(
     permutation: Permutation<I, SIZE>,
-    index: usize,
-) -> usize {
+    index: u8,
+) -> u8 {
     permutation.element_at_index(index, |x| x)
 }
 
