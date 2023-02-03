@@ -213,6 +213,8 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
 
     /// *DO NOT USE THIS FUNCTION ON USER INPUT*
     /// Calculate the permutation of an array.
+    /// # Panics
+    ///
     /// This will panic or loop forever if the array's elements contain duplicates or elements outsize `0..ELEMENTS`
     #[must_use]
     pub fn calculate_unchecked<T, F: Fn(&T) -> u8>(mut arr: [T; ELEMENTS],mut f: F) -> Self {
@@ -335,7 +337,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     /// Panics if `BYTES` is too small for permutations of this many elements
     /// See `REQUIRED_BYTES`
     pub fn to_le_byte_array<const BYTES: usize>(&self) -> [u8; BYTES] {
-        assert!(BYTES >= Self::REQUIRED_BYTES);
+        debug_assert!(BYTES >= Self::REQUIRED_BYTES);
 
         self.0.to_le_byte_array()
     }
@@ -345,7 +347,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     /// Panics if `BYTES` is too small for permutations of this many elements
     /// See `REQUIRED_BYTES`
     pub fn try_from_le_byte_array(bytes: &[u8]) -> Option<Self> {
-        assert!(bytes.len() >= Self::REQUIRED_BYTES);
+        debug_assert!(bytes.len() >= Self::REQUIRED_BYTES);
 
         let inner = I::from_le_byte_array(bytes);
         if inner <= Self::get_last().0 {
@@ -359,21 +361,21 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     pub const REQUIRED_BYTES: usize = {
         match ELEMENTS {
             0..=5 => 1,
-            ..=8 => 2,
-            ..=10 => 3,
-            ..=12 => 4,
-            ..=14 => 5,
-            ..=16 => 6,
-            ..=18 => 7,
-            ..=20 => 8,
-            ..=22 => 9,
-            ..=24 => 10,
-            ..=25 => 11,
-            ..=27 => 12,
-            ..=29 => 13,
-            ..=30 => 14,
-            ..=32 => 15,
-            ..=34 => 16,
+            6..=8 => 2,
+            9..=10 => 3,
+            11..=12 => 4,
+            13..=14 => 5,
+            15..=16 => 6,
+            17..=18 => 7,
+            19..=20 => 8,
+            21..=22 => 9,
+            23..=24 => 10,
+            25 => 11,
+            26..=27 => 12,
+            28..=29 => 13,
+            30 => 14,
+            31..=32 => 15,
+            33..=34 => 16,
             _ => {
                 panic!("ELEMENTS is too big")
             }
@@ -436,8 +438,8 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     /// ```
     #[must_use] pub fn reverse() -> Self {
         let mut swaps = [0; ELEMENTS];
-        for i in 0..(ELEMENTS / 2) {
-            swaps[i] = (ELEMENTS - ((2 * i) + 1)) as u8;
+        for (i, swap) in swaps.iter_mut().enumerate().take(ELEMENTS / 2){
+            *swap = (ELEMENTS - ((2 * i) + 1)) as u8;
         }
         Self::from_swaps(swaps.into_iter())
     }
@@ -450,8 +452,8 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     /// ```
     pub fn rotate_right() -> Self {
         let mut swaps = [0; ELEMENTS];
-        for i in 0..ELEMENTS {
-            swaps[i] = (ELEMENTS - (i + 1)) as u8;
+        for (i,  swap) in swaps.iter_mut().enumerate().take(ELEMENTS) {
+            *swap = (ELEMENTS - (i + 1)) as u8;
         }
         Self::from_swaps(swaps.into_iter())
     }
@@ -499,7 +501,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Inner, Permutation};
+    use crate::{Permutation};
     use anyhow::Ok;
     use itertools::Itertools;
     use ntest::test_case;
