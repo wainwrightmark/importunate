@@ -144,6 +144,12 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
             arr.swap(i, swap + i);
         }
     }
+    /// Apply the inverse of this permutation to an array, reordering the first `Elements` elements
+    pub fn apply_inverse<T>(&self, arr: &mut [T]) {
+        for (i, swap) in self.swaps_array().into_iter().enumerate().rev() {
+            arr.swap(i, swap + i);
+        }
+    }
 
     /// The range of all possible permutations of this number of elements
     pub fn all() -> impl Iterator<Item = Self> {
@@ -440,32 +446,6 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
 
         Self::from_swaps(swaps.into_iter())
 
-        /*
-        [0, 0, 0, 0] [0, 0, 0, 0]
-        [1, 0, 0, 0] [1, 0, 0, 0]
-        [2, 0, 0, 0] [2, 0, 0, 0]
-        [3, 0, 0, 0] [3, 0, 0, 0]
-        [0, 1, 0, 0] [0, 1, 0, 0]
-        [1, 1, 0, 0] [2, 1, 0, 0] *
-        [2, 1, 0, 0] [1, 1, 0, 0] *
-        [3, 1, 0, 0] [3, 1, 0, 0]
-        [0, 2, 0, 0] [0, 2, 0, 0]
-        [1, 2, 0, 0] [3, 2, 0, 0] *
-        [2, 2, 0, 0] [2, 2, 0, 0]
-        [3, 2, 0, 0] [1, 2, 0, 0] *
-        [0, 0, 1, 0] [0, 0, 1, 0]
-        [1, 0, 1, 0] [1, 0, 1, 0]
-        [2, 0, 1, 0] [3, 0, 1, 0] *
-        [3, 0, 1, 0] [2, 0, 1, 0] *
-        [0, 1, 1, 0] [0, 2, 1, 0] *
-        [1, 1, 1, 0] [3, 2, 1, 0] *
-        [2, 1, 1, 0] [1, 2, 1, 0] *
-        [3, 1, 1, 0] [2, 2, 1, 0] *
-        [0, 2, 1, 0] [0, 1, 1, 0] *
-        [1, 2, 1, 0] [2, 1, 1, 0] *
-        [2, 2, 1, 0] [3, 1, 1, 0] *
-        [3, 2, 1, 0] [1, 1, 1, 0] *
-                                         */
     }
 
     pub fn get_max() -> Self {
@@ -594,6 +574,16 @@ mod tests {
             let new_perm = Permutation::<u8, 4>::try_calculate(arr2, |&x| x).unwrap();
 
             assert_eq!(0, new_perm.0)
+        }
+    }
+
+    #[test]
+    pub fn test_apply_inverse(){
+        for permutation in Permutation::<u8, 4>::all() {
+            let mut arr = permutation.get_array();
+            permutation.apply_inverse(&mut arr);
+
+            assert_eq!(arr, Permutation::<u8, 4>::DEFAULT_ARRAY)
         }
     }
 
