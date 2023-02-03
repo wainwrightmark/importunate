@@ -540,12 +540,12 @@ mod tests {
             let arr = permutation.get_array();
             let inverse = permutation.invert();
 
-            println!(
-                "{}:  {:?} {:?}",
-                permutation.0,
-                permutation.swaps_array(),
-                inverse.swaps_array()
-            );
+            // println!(
+            //     "{}:  {:?} {:?}",
+            //     permutation.0,
+            //     permutation.swaps_array(),
+            //     inverse.swaps_array()
+            // );
 
             let mut arr2 = arr.clone();
             inverse.apply(&mut arr2);
@@ -571,16 +571,10 @@ mod tests {
             let mut arr = [0, 1, 2, 3];
             perm.apply(&mut arr);
 
-            println!("");
-            println!("");
-            println!("{arr:?} :: {}", perm.0);
             let mut arr2 = [0, 1, 2, 3];
 
             for index in 0..4 {
-                println!("");
-                println!("Index: {index}");
                 let element = perm.element_at_index(index, |x| x);
-                println!("Element: {element}");
                 arr2[(index as usize)] = element;
             }
 
@@ -619,7 +613,6 @@ mod tests {
 
         for perm in Permutation::<u8, 4>::all() {
             let arr = perm.get_array();
-            println!("{arr:?}");
 
             let added = set.insert(arr);
             assert!(added);
@@ -634,7 +627,6 @@ mod tests {
     pub fn test_calculate() {
         for perm in Permutation::<u8, 4>::all() {
             let arr = perm.get_array();
-            println!("{arr:?}");
             let calculated = Permutation::<u8, 4>::try_calculate(arr, |x| *x).unwrap();
 
             assert_eq!(perm, calculated)
