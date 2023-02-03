@@ -140,7 +140,6 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         }
     }
 
-    #[must_use]
     /// The range of all possible permutations of this number of elements
     pub fn all() -> impl Iterator<Item = Self> {
         let range = I::get_permutation_range(ELEMENTS);
@@ -216,8 +215,8 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     /// Calculate the permutation of an array.
     /// This will panic or loop forever if the array's elements contain duplicates or elements outsize `0..ELEMENTS`
     #[must_use]
-    pub fn calculate_unchecked<T, F: Fn(&T) -> u8>(mut arr: [T; ELEMENTS], f: F) -> Self {
-        debug_assert!(Self::test_unique(arr.iter().map(|x| f(x))));
+    pub fn calculate_unchecked<T, F: Fn(&T) -> u8>(mut arr: [T; ELEMENTS],mut f: F) -> Self {
+        debug_assert!(Self::test_unique(arr.iter().map(&mut f)));
         let mut slot_multiplier: I = I::one();
         let mut inner: I = I::zero();
         for index in 0..(ELEMENTS as u8) {
@@ -249,8 +248,8 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     #[must_use]
     /// Calculate the permutation of an array
     /// This will return `None` if the array's elements contain duplicates or elements outsize `0..ELEMENTS`
-    pub fn try_calculate<T, F: Fn(&T) -> u8>(arr: [T; ELEMENTS], f: F) -> Option<Self> {
-        if !Self::test_unique(arr.iter().map(|x| f(x))) {
+    pub fn try_calculate<T, F: Fn(&T) -> u8>(arr: [T; ELEMENTS],mut  f: F) -> Option<Self> {
+        if !Self::test_unique(arr.iter().map(&mut f)) {
             return None;
         }
         Some(Self::calculate_unchecked(arr, f))
@@ -435,7 +434,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     /// assert_eq!(Permutation::<u8, 4>::reverse().get_array(), [3,2,1,0]);
     /// assert_eq!(Permutation::<u8, 5>::reverse().get_array(), [4,3,2,1,0]);
     /// ```
-    pub fn reverse() -> Self {
+    #[must_use] pub fn reverse() -> Self {
         let mut swaps = [0; ELEMENTS];
         for i in 0..(ELEMENTS / 2) {
             swaps[i] = (ELEMENTS - ((2 * i) + 1)) as u8;
@@ -500,7 +499,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
 
 #[cfg(test)]
 mod tests {
-    use crate::*;
+    use crate::{Inner, Permutation};
     use anyhow::Ok;
     use itertools::Itertools;
     use ntest::test_case;
@@ -714,7 +713,7 @@ mod tests {
 
     #[test]
     fn test_ser_de() {
-        use serde_test::*;
+        use serde_test::{Token, assert_tokens};
         let perm = Permutation::<u8, 4>::calculate_incomplete(&[2, 0, 1, 3]);
 
         assert_tokens(&perm, &[Token::U8(6)])
