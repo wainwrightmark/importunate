@@ -82,7 +82,7 @@ macro_rules! impl_permutation_inner {
                     let mut i = 0;
                     while i < $arr_len {
                         arr[i] = factorial(i as $inner);
-                        i = i + 1;
+                        i += 1;
                     }
                     arr
                 }

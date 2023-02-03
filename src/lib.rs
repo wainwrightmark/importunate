@@ -3,7 +3,6 @@
 #![deny(missing_docs)]
 #![deny(warnings, dead_code, unused_imports, unused_mut)]
 #![warn(clippy::pedantic)]
-
 //! [![github]](https://github.com/wainwrightmark/importunate)&ensp;[![crates-io]](https://crates.io/crates/importunate)&ensp;[![docs-rs]](https://docs.rs/importunate)
 //!
 //! [github]: https://img.shields.io/badge/github-8da0cb?style=for-the-badge&labelColor=555555&logo=github
@@ -74,8 +73,7 @@ impl<'de, I: Inner + Deserialize<'de>, const ELEMENTS: usize> Deserialize<'de>
         let i = I::deserialize(deserializer)?;
         if i > Self::get_last().0 {
             return Err(serde::de::Error::custom(format!(
-                "number out of range: {:?}",
-                i
+                "number out of range: {i:?}"
             )));
         }
 
@@ -183,11 +181,10 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         let mut test = 0u64;
 
         for x in iterator.take(ELEMENTS) {
-            test = test | 1 << x;
+            test |= 1 << x;
         }
 
-        let r = test.count_ones() as usize == ELEMENTS;
-        r
+        test.count_ones() as usize == ELEMENTS
     }
 
     #[must_use]
@@ -212,7 +209,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
             arr[index] = c;
         }
 
-        Self::calculate_unchecked(arr, |&x| x as u8)
+        Self::calculate_unchecked(arr, |&x| x)
     }
 
     /// *DO NOT USE THIS FUNCTION ON USER INPUT*
@@ -272,7 +269,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
 
         let old_index = Self::element_at_index_from_swaps(&swaps, new_index);
 
-        f(old_index.into())
+        f(old_index)
     }
 
     #[must_use]
@@ -302,18 +299,18 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
             match j.cmp(&index) {
                 Ordering::Less => {
                     if j + diff == index {
-                        return j.into();
+                        return j;
                     }
                 }
                 Ordering::Equal => {
-                    index = index + diff;
+                    index += diff;
                 }
                 Ordering::Greater => {
                     break;
                 }
             }
         }
-        return index;
+        index
     }
 
     const DEFAULT_ARRAY: [u8; ELEMENTS] = {
@@ -409,7 +406,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
 
         if !is_different {
             //A great many permutations are their own inverses, so we can skip calculating if that is the case
-            return self.clone();
+            return *self;
         }
 
         Self::from_swaps(swaps.into_iter())
@@ -428,8 +425,8 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     pub fn combine(&self, rhs: &Self) -> Self {
         let mut arr = self.get_array();
         rhs.apply(&mut arr);
-        let r = Self::calculate_unchecked(arr, |&x| x);
-        r
+
+        Self::calculate_unchecked(arr, |&x| x)
     }
 
     /// Gets the reverse permutation for this number of elements.
@@ -438,9 +435,9 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     /// assert_eq!(Permutation::<u8, 4>::reverse().get_array(), [3,2,1,0]);
     /// assert_eq!(Permutation::<u8, 5>::reverse().get_array(), [4,3,2,1,0]);
     /// ```
-    pub fn reverse()-> Self{
-        let mut swaps = [0;ELEMENTS];
-        for i in 0..(ELEMENTS / 2){
+    pub fn reverse() -> Self {
+        let mut swaps = [0; ELEMENTS];
+        for i in 0..(ELEMENTS / 2) {
             swaps[i] = (ELEMENTS - ((2 * i) + 1)) as u8;
         }
         Self::from_swaps(swaps.into_iter())
@@ -452,9 +449,9 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     /// use importunate::Permutation;
     /// assert_eq!(Permutation::<u8, 4>::rotate_right().get_array(), [3,0,1,2]);
     /// ```
-    pub fn rotate_right()-> Self{
-        let mut swaps = [0;ELEMENTS];
-        for i in 0..ELEMENTS{
+    pub fn rotate_right() -> Self {
+        let mut swaps = [0; ELEMENTS];
+        for i in 0..ELEMENTS {
             swaps[i] = (ELEMENTS - (i + 1)) as u8;
         }
         Self::from_swaps(swaps.into_iter())
@@ -466,8 +463,8 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     /// use importunate::Permutation;
     /// assert_eq!(Permutation::<u8, 4>::rotate_left().get_array(), [1,2,3,0]);
     /// ```
-    pub fn rotate_left()-> Self{
-        let mut swaps = [1;ELEMENTS];
+    pub fn rotate_left() -> Self {
+        let mut swaps = [1; ELEMENTS];
         swaps[ELEMENTS - 1] = 0;
         Self::from_swaps(swaps.into_iter())
     }
@@ -588,7 +585,7 @@ mod tests {
             //     inverse.swaps_array()
             // );
 
-            let mut arr2 = arr.clone();
+            let mut arr2 = arr;
             inverse.apply(&mut arr2);
             let new_perm = Permutation::<u8, 4>::try_calculate(arr2, |&x| x).unwrap();
 
@@ -636,12 +633,11 @@ mod tests {
                 arr1[index as usize] = arr
                     .iter()
                     .enumerate()
-                    .filter(|(_, x)| x == &&index)
-                    .next()
+                    .find(|(_, x)| x == &&index)
                     .unwrap()
                     .0 as u8;
 
-                arr2[index as usize] = perm.index_of(&index, |&x| x as u8);
+                arr2[index as usize] = perm.index_of(&index, |&x| x);
             }
 
             assert_eq!(arr1, arr2)

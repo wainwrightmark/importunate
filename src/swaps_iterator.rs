@@ -7,7 +7,7 @@ pub struct SwapsIterator<I: Inner> {
 }
 
 impl<I: Inner> SwapsIterator<I> {
-    pub fn new<const ELEMENTS: usize> (perm: &Permutation<I, ELEMENTS>) -> Self {
+    pub fn new<const ELEMENTS: usize>(perm: &Permutation<I, ELEMENTS>) -> Self {
         Self {
             inner: perm.0,
             count: ELEMENTS.try_into().ok().unwrap(),
@@ -25,7 +25,7 @@ impl<I: Inner> Iterator for SwapsIterator<I> {
 
         let (r, diff) = self.inner.div_rem(&self.count.into());
         self.inner = r;
-        self.count = self.count - 1;
+        self.count -= 1;
         diff.try_into().ok()
     }
 

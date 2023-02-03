@@ -33,7 +33,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     bench_apply::<u64, 15>(c);
     bench_apply::<u64, 20>(c);
     bench_apply::<u128, 34>(c);
-
 }
 
 fn bench_old_index<I: Inner, const SIZE: usize>(c: &mut Criterion, index: u8) {
@@ -95,17 +94,11 @@ fn apply<I: Inner, const SIZE: usize>(
     arr
 }
 
-fn new_index<I: Inner, const SIZE: usize>(
-    permutation: Permutation<I, SIZE>,
-    index: u8,
-) -> u8 {
+fn new_index<I: Inner, const SIZE: usize>(permutation: Permutation<I, SIZE>, index: u8) -> u8 {
     permutation.index_of(&index, |&x| x)
 }
 
-fn old_index<I: Inner, const SIZE: usize>(
-    permutation: Permutation<I, SIZE>,
-    index: u8,
-) -> u8 {
+fn old_index<I: Inner, const SIZE: usize>(permutation: Permutation<I, SIZE>, index: u8) -> u8 {
     permutation.element_at_index(index, |x| x)
 }
 
