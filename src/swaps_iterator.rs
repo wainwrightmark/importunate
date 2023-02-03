@@ -7,10 +7,10 @@ pub struct SwapsIterator<I: Inner> {
 }
 
 impl<I: Inner> SwapsIterator<I> {
-    pub fn new<const Elements: usize> (perm: &Permutation<I, Elements>) -> Self {
+    pub fn new<const ELEMENTS: usize> (perm: &Permutation<I, ELEMENTS>) -> Self {
         Self {
             inner: perm.0,
-            count: Elements.try_into().ok().unwrap(),
+            count: ELEMENTS.try_into().ok().unwrap(),
         }
     }
 }

@@ -3,8 +3,6 @@ use core::hash::Hash;
 use core::ops::Range;
 
 use num_integer::Integer;
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
 
 /// The inner type of a permutation
 pub trait Inner:
@@ -22,16 +20,28 @@ pub trait Inner:
     + TryInto<usize>
     + core::iter::Product
 {
+    /// The maximum number of elements a permutation of this size can have
     const MAX_ELEMENTS: usize;
+    /// The size of this type in bytes
     const BYTES: usize;
-    type Iterator: Iterator<Item = Self>;
 
-    fn get_permutation_range(elements: usize) -> Self::Iterator;
+    /// Range iterator for this type
+    type RangeIter: Iterator<Item = Self>;
 
+    #[must_use]
+    /// Get the range of legal permutations for a given number of elements
+    fn get_permutation_range(elements: usize) -> Self::RangeIter;
+
+    #[must_use]
+    /// Get the factorial of a given number
     fn get_factorial(n: usize) -> Self;
 
+    #[must_use]
+    /// Convert to a byte array of a given length, truncating if necessary
     fn to_le_byte_array<const BYTES: usize>(&self) -> [u8; BYTES];
 
+    #[must_use]
+    /// Create from a little endian byte array
     fn from_le_byte_array(bytes: &[u8]) -> Self;
 }
 
@@ -41,9 +51,9 @@ macro_rules! impl_permutation_inner {
             const MAX_ELEMENTS: usize = $max_elements;
             const BYTES: usize = $bytes;
 
-            type Iterator = Range<Self>;
+            type RangeIter = Range<Self>;
 
-            fn get_permutation_range(elements: usize) -> Self::Iterator {
+            fn get_permutation_range(elements: usize) -> Self::RangeIter {
                 0..(Self::get_factorial(elements))
             }
 

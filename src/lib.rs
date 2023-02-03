@@ -1,7 +1,7 @@
 #![cfg_attr(not(any(test, feature = "std")), no_std)]
 #![doc(html_root_url = "https://docs.rs/importunate/0.4.0")]
-#![allow(missing_docs)]
-#![allow(warnings, dead_code, unused_imports, unused_mut)]
+#![deny(missing_docs)]
+#![deny(warnings, dead_code, unused_imports, unused_mut)]
 #![warn(clippy::pedantic)]
 
 //! [![github]](https://github.com/wainwrightmark/importunate)&ensp;[![crates-io]](https://crates.io/crates/importunate)&ensp;[![docs-rs]](https://docs.rs/importunate)
@@ -46,11 +46,11 @@
 // optional rand
 // errors
 
+/// Inner types that Permutations can use
 pub mod inner;
-pub mod swaps_iterator;
+mod swaps_iterator;
 
 use core::hash::Hash;
-use core::ops::Range;
 use core::{cmp::Ordering, fmt::Debug};
 
 use inner::Inner;
@@ -60,19 +60,19 @@ use serde::{Deserialize, Serialize};
 /// A permutation of a fixed length array
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[cfg_attr(any(test, feature = "serde"), derive(Serialize), serde(transparent))]
-pub struct Permutation<I: Inner, const Elements: usize>(I);
+pub struct Permutation<I: Inner, const ELEMENTS: usize>(I);
 
 #[cfg(any(test, feature = "serde"))]
-impl<'de, I: Inner + Deserialize<'de>, const Elements: usize> Deserialize<'de>
-    for Permutation<I, Elements>
+impl<'de, I: Inner + Deserialize<'de>, const ELEMENTS: usize> Deserialize<'de>
+    for Permutation<I, ELEMENTS>
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        debug_assert!(Elements <= I::MAX_ELEMENTS);
+        debug_assert!(ELEMENTS <= I::MAX_ELEMENTS);
         let i = I::deserialize(deserializer)?;
-        if i > Self::get_max().0 {
+        if i > Self::get_last().0 {
             return Err(serde::de::Error::custom(format!(
                 "number out of range: {:?}",
                 i
@@ -87,18 +87,18 @@ impl<'de, I: Inner + Deserialize<'de>, const Elements: usize> Deserialize<'de>
 use arbitrary::Arbitrary;
 use swaps_iterator::SwapsIterator;
 #[cfg(feature = "arbitrary")]
-impl<'a, I: Inner, const Elements: usize> Arbitrary<'a> for Permutation<I, Elements> {
+impl<'a, I: Inner, const ELEMENTS: usize> Arbitrary<'a> for Permutation<I, ELEMENTS> {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        debug_assert!(Elements <= I::MAX_ELEMENTS);
+        debug_assert!(ELEMENTS <= I::MAX_ELEMENTS);
         let bytes = u.bytes(Self::REQUIRED_BYTES)?;
 
         let inner = I::from_le_byte_array(bytes);
-        let inner = inner.mod_floor(&Self::get_max().0);
+        let inner = inner.mod_floor(&Self::get_last().0);
         Ok(Self(inner))
     }
 
     fn arbitrary_take_rest(mut u: arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        debug_assert!(Elements <= I::MAX_ELEMENTS);
+        debug_assert!(ELEMENTS <= I::MAX_ELEMENTS);
         Self::arbitrary(&mut u)
     }
 
@@ -108,59 +108,57 @@ impl<'a, I: Inner, const Elements: usize> Arbitrary<'a> for Permutation<I, Eleme
     }
 }
 
-impl<I: Inner, const Elements: usize> From<I> for Permutation<I, Elements> {
+impl<I: Inner, const ELEMENTS: usize> From<I> for Permutation<I, ELEMENTS> {
     fn from(value: I) -> Self {
-        debug_assert!(Elements <= I::MAX_ELEMENTS);
+        debug_assert!(ELEMENTS <= I::MAX_ELEMENTS);
         Self(value)
     }
 }
 
-impl<I: Inner, const Elements: usize> Default for Permutation<I, Elements> {
+impl<I: Inner, const ELEMENTS: usize> Default for Permutation<I, ELEMENTS> {
     fn default() -> Self {
-        debug_assert!(Elements <= I::MAX_ELEMENTS);
+        debug_assert!(ELEMENTS <= I::MAX_ELEMENTS);
         Self(Default::default())
     }
 }
 
-fn get_index_of(arr: &[usize], e: usize) -> usize {
-    for i in 0..arr.len() {
-        if arr[i] == e {
-            return i;
-        }
-    }
-    panic!("Could not find index {e}")
-}
 
-impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
+impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
+
+    #[must_use]
+    /// The inner value of this permutation
     pub fn inner(&self) -> I {
         self.0
     }
 
-    /// Apply this permutation to an array, reordering the first `Elements` elements
+    /// Apply this permutation to an array, reordering the first `ELEMENTS` elements
     pub fn apply<T>(&self, arr: &mut [T]) {
         for (i, swap) in self.swaps().enumerate() {
             arr.swap(i, usize::from(swap) + i);
         }
     }
-    /// Apply the inverse of this permutation to an array, reordering the first `Elements` elements
+    /// Apply the inverse of this permutation to an array, reordering the first `ELEMENTS` elements
     pub fn apply_inverse<T>(&self, arr: &mut [T]) {
         for (i, swap) in self.swaps_array().into_iter().enumerate().rev() {
             arr.swap(i, usize::from(swap) + i);
         }
     }
 
+    #[must_use]
     /// The range of all possible permutations of this number of elements
     pub fn all() -> impl Iterator<Item = Self> {
-        let range = I::get_permutation_range(Elements);
+        let range = I::get_permutation_range(ELEMENTS);
         range.map(|x| Self(x))
     }
 
+    #[must_use]
     fn swaps(&self) -> SwapsIterator<I> {
         SwapsIterator::new(self)
     }
 
-    fn swaps_array(&self) -> [u8; Elements] {
-        let mut swaps = [0; Elements];
+    #[must_use]
+    fn swaps_array(&self) -> [u8; ELEMENTS] {
+        let mut swaps = [0; ELEMENTS];
 
         for (i, swap) in self.swaps().enumerate() {
             swaps[i] = swap;
@@ -168,6 +166,7 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
         swaps
     }
 
+    #[must_use]
     fn from_swaps(swaps: impl Iterator<Item = u8>) -> Self {
         let mut inner: I = I::zero();
         let mut mult: I = I::one();
@@ -175,42 +174,33 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
         for (i, swap) in swaps.enumerate() {
             let r = mult * swap.try_into().ok().unwrap();
             inner = inner + r;
-            mult = mult * (Elements - i).try_into().ok().unwrap();
+            mult = mult * (ELEMENTS - i).try_into().ok().unwrap();
         }
 
         Self(inner)
     }
 
-    //e.g. 1,4,12,24 or 1,5,20,60,120
-    fn get_backtorial(n: usize) -> I {
-        let mut m: I = Elements.try_into().ok().unwrap();
-        let mut total: I = I::one();
-        for _ in 0..n {
-            total = total * m;
-            m = m - I::one();
-        }
-        total
-    }
-
+    #[must_use]
     fn test_unique(iterator: impl Iterator<Item = usize>) -> bool {
         let mut test = 0u64;
 
-        for x in iterator.take(Elements) {
+        for x in iterator.take(ELEMENTS) {
             test = test | 1 << x;
         }
 
-        let r = test.count_ones() as usize == Elements;
+        let r = test.count_ones() as usize == ELEMENTS;
         r
     }
 
+    #[must_use]
     /// Calculate the permutation for any list, even one containing duplicates.
-    /// The performance of this is not so good as it will make n * n comparisons
+    /// There is a performance penalty for using this - it will make n * n comparisons
     pub fn calculate_incomplete<T: Ord>(slice: &[T]) -> Self {
         let mut arr = Self::DEFAULT_ARRAY;
 
-        for (index, element) in slice.iter().take(Elements).enumerate() {
+        for (index, element) in slice.iter().take(ELEMENTS).enumerate() {
             let mut c = 0;
-            for (jindex, el) in slice.iter().take(Elements).enumerate() {
+            for (jindex, el) in slice.iter().take(ELEMENTS).enumerate() {
                 match element.cmp(el) {
                     Ordering::Greater => c += 1,
                     Ordering::Equal => {
@@ -227,11 +217,14 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
         Self::calculate_unchecked(arr, |&x| x)
     }
 
-    pub fn calculate_unchecked<T, F: Fn(&T) -> usize>(mut arr: [T; Elements], f: F) -> Self {
+    /// Calculate the permutation of an array.
+    /// This will panic or loop forever if the arrays elements contain duplicates or elements outsize `0..ELEMENTS`
+    #[must_use]
+    pub fn calculate_unchecked<T, F: Fn(&T) -> usize>(mut arr: [T; ELEMENTS], f: F) -> Self {
         debug_assert!(Self::test_unique(arr.iter().map(|x| f(x))));
         let mut slot_multiplier: I = I::one();
         let mut inner: I = I::zero();
-        'outer: for index in (0..Elements) {
+        for index in 0..ELEMENTS {
             let mut swap_element = f(&arr[index]);
 
             'inner: loop {
@@ -245,31 +238,34 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
 
                             arr.swap(index, index + diff);
 
-                            let change = (slot_multiplier * (I::try_from(amount).ok().unwrap()));
+                            let change = slot_multiplier * (I::try_from(amount).ok().unwrap());
                             inner = inner + change;
                             break 'inner;
                         }
                     }
                 }
             }
-            slot_multiplier = slot_multiplier * I::try_from((Elements - index)).ok().unwrap();
+            slot_multiplier = slot_multiplier * I::try_from(ELEMENTS - index).ok().unwrap();
         }
         Self(inner)
     }
 
+    #[must_use]
     /// Calculate the permutation of an array
-    /// Beware: if the array contains duplicate elements, this may loop forever
-    pub fn try_calculate<T, F: Fn(&T) -> usize>(mut arr: [T; Elements], f: F) -> Option<Self> {
+    /// This will return `None` if the array's elements contain duplicates or elements outsize `0..ELEMENTS`
+    pub fn try_calculate<T, F: Fn(&T) -> usize>(arr: [T; ELEMENTS], f: F) -> Option<Self> {
         if !Self::test_unique(arr.iter().map(|x| f(x))) {
             return None;
         }
         Some(Self::calculate_unchecked(arr, f))
     }
 
+    #[must_use]
+    /// Get the element at the given index of the permutation
     pub fn element_at_index<T, F: Fn(usize) -> T>(&self, new_index: usize, f: F) -> T {
-        debug_assert!(new_index < Elements);
+        debug_assert!(new_index < ELEMENTS);
 
-        let mut swaps = [0; Elements];
+        let mut swaps = [0; ELEMENTS];
 
         for (i, swap) in self.swaps().enumerate().take(new_index + 1) {
             swaps[i] = swap;
@@ -280,6 +276,7 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
         f(old_index.into())
     }
 
+    #[must_use]
     fn element_at_index_from_swaps(swaps: &[u8], index: u8) -> u8 {
         let mut current = swaps[usize::from(index)] + index;
 
@@ -291,9 +288,11 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
         current
     }
 
+    #[must_use]
+    /// Get the new index of the given element from the permutation
     pub fn index_of<T, F: Fn(&T) -> u8>(&self, element: &T, f: F) -> u8 {
         let old_index = f(element);
-        debug_assert!(usize::from(old_index) < Elements);
+        debug_assert!(usize::from(old_index) < ELEMENTS);
 
         Self::index_of_element_from_swaps(self.swaps(), old_index)
     }
@@ -318,43 +317,54 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
         return index;
     }
 
-    const DEFAULT_ARRAY: [usize; Elements] = {
-        let mut arr = [0usize; Elements];
+    const DEFAULT_ARRAY: [usize; ELEMENTS] = {
+        let mut arr = [0usize; ELEMENTS];
         let mut i = 0;
-        while i < Elements {
+        while i < ELEMENTS {
             arr[i] = i;
             i += 1;
         }
         arr
     };
 
-    pub fn get_array(&self) -> [usize; Elements] {
+    #[must_use]
+    /// Get the complete array of this permutation's elements
+    pub fn get_array(&self) -> [usize; ELEMENTS] {
         let mut arr = Self::DEFAULT_ARRAY;
         self.apply(&mut arr);
         arr
     }
 
 
-
+    #[must_use]
+    /// Write this permutation to a byte array
+    /// Panics if `BYTES` is too small for permutations of this many elements
+    /// See `REQUIRED_BYTES`
     pub fn to_le_byte_array<const BYTES: usize>(&self) -> [u8; BYTES] {
         assert!(BYTES >= Self::REQUIRED_BYTES);
 
         self.0.to_le_byte_array()
     }
 
+
+    #[must_use]
+    /// Read this permutation from a byte array
+    /// Panics if `BYTES` is too small for permutations of this many elements
+    /// See `REQUIRED_BYTES`
     pub fn try_from_le_byte_array(bytes: &[u8]) -> Option<Self> {
         assert!(bytes.len() >= Self::REQUIRED_BYTES);
 
         let inner = I::from_le_byte_array(bytes);
-        if inner <= Self::get_max().0 {
+        if inner <= Self::get_last().0 {
             Self(inner).into()
         } else {
             None
         }
     }
 
+    /// The number of bytes required to store a permutation of this many elements
     pub const REQUIRED_BYTES: usize = {
-        match Elements {
+        match ELEMENTS {
             0..=5 => 1,
             ..=8 => 2,
             ..=10 => 3,
@@ -372,44 +382,52 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
             ..=32 => 15,
             ..=34 => 16,
             _ => {
-                panic!("Elements is too big")
+                panic!("ELEMENTS is too big")
             }
         }
     };
 
+    #[must_use]
+    /// Invert this permutation
+    /// This produces the permutation that will reorder the array back to its original order
     pub fn invert(&self) -> Self {
         let mut swaps = self.swaps_array();
-        let mut updated = 0;
+        let mut is_different = false;
 
-        for i in (0..(Elements as u8)).rev() {
+        for i in (0..(ELEMENTS as u8)).rev() {
             let swap: u8 = swaps[usize::from(i)];
             if swap != 0 {
                 let i2 = i + swap;
                 for j in (0..i).rev() {
                     if swaps[usize::from(j)] + j == i {
                         swaps[usize::from(j)] = i2 - j;
-                        updated += 1;
+                        is_different = true;
                     } else if swaps[usize::from(j)] + j == i2 {
                         swaps[usize::from(j)] = i - j;
-                        updated += 1;
+                        is_different = true;
                     }
                 }
             }
         }
 
-        if updated == 0 {
+        if !is_different { //A great many permutations are their own inverses, so we can skip calculating if that is the case
             return self.clone();
         }
 
         Self::from_swaps(swaps.into_iter())
     }
 
-    pub fn get_max() -> Self {
-        let inner = I::get_factorial(Elements);
+    #[must_use]
+    /// Gets the permutation of this many elements with the highest inner value
+    pub fn get_last() -> Self {
+        let inner = I::get_factorial(ELEMENTS);
         Self(inner - I::one())
     }
 
 
+    #[must_use]
+    /// Combine this permutation with another. Producing a permutation equivalent to performing this and then the other.
+    /// Note that this operation is neither commutative nor associative
     pub fn combine(&self, rhs: &Self) -> Self {
         let mut arr = self.get_array();
         rhs.apply(&mut arr);
@@ -448,9 +466,8 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Inner, Permutation};
+    use crate::*;
     use anyhow::Ok;
-    use core::ops::Range;
     use itertools::Itertools;
     use ntest::test_case;
     use std::collections::HashSet;
@@ -476,14 +493,12 @@ mod tests {
     pub fn test_calculate_incomplete() {
         let anagram = Permutation::<u16, 7>::calculate_incomplete("anagram".as_bytes());
 
-        let mut to_change = ("anagram".bytes().collect_vec());
+        let mut to_change = "anagram".bytes().collect_vec();
         anagram.invert().apply(to_change.as_mut_slice());
 
         let converted = String::from_utf8(to_change).unwrap();
 
         assert_eq!(converted, "aaagmnr")
-        // println!("anagram: {anagram:?}");
-        // println!("inverted: {converted:?}");
     }
 
     #[test]
@@ -528,7 +543,6 @@ mod tests {
         for permutation in Permutation::<u8, 4>::all() {
             let arr = permutation.get_array();
             let inverse = permutation.invert();
-            let inverse_arr = inverse.get_array();
 
             println!(
                 "{}:  {:?} {:?}",
@@ -591,7 +605,7 @@ mod tests {
                 arr1[index as usize] = arr
                     .iter()
                     .enumerate()
-                    .filter(|(i, x)| x == &&index)
+                    .filter(|(_, x)| x == &&index)
                     .next()
                     .unwrap()
                     .0 as u8;
@@ -655,7 +669,7 @@ mod tests {
         ($name: ident, $inner:ty, $max_elements:tt) => {
             #[test]
             pub fn $name() {
-                let permutation = Permutation::<$inner, $max_elements>::get_max();
+                let permutation = Permutation::<$inner, $max_elements>::get_last();
 
                 //This orders arrays like [3,0,1,2] - effectively rotating them
                 let index_of_0 = permutation.index_of(&0, |&x| x);
