@@ -3,6 +3,7 @@
 #![deny(missing_docs)]
 #![deny(warnings, dead_code, unused_imports, unused_mut)]
 #![warn(clippy::pedantic)]
+#![allow(clippy::cast_possible_truncation)]
 //! [![github]](https://github.com/wainwrightmark/importunate)&ensp;[![crates-io]](https://crates.io/crates/importunate)&ensp;[![docs-rs]](https://docs.rs/importunate)
 //!
 //! [github]: https://img.shields.io/badge/github-8da0cb?style=for-the-badge&labelColor=555555&logo=github
@@ -217,7 +218,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     ///
     /// This will panic or loop forever if the array's elements contain duplicates or elements outsize `0..ELEMENTS`
     #[must_use]
-    pub fn calculate_unchecked<T, F: Fn(&T) -> u8>(mut arr: [T; ELEMENTS],mut f: F) -> Self {
+    pub fn calculate_unchecked<T, F: Fn(&T) -> u8>(mut arr: [T; ELEMENTS], mut f: F) -> Self {
         debug_assert!(Self::test_unique(arr.iter().map(&mut f)));
         let mut slot_multiplier: I = I::one();
         let mut inner: I = I::zero();
@@ -250,7 +251,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     #[must_use]
     /// Calculate the permutation of an array
     /// This will return `None` if the array's elements contain duplicates or elements outsize `0..ELEMENTS`
-    pub fn try_calculate<T, F: Fn(&T) -> u8>(arr: [T; ELEMENTS],mut  f: F) -> Option<Self> {
+    pub fn try_calculate<T, F: Fn(&T) -> u8>(arr: [T; ELEMENTS], mut f: F) -> Option<Self> {
         if !Self::test_unique(arr.iter().map(&mut f)) {
             return None;
         }
@@ -436,9 +437,10 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     /// assert_eq!(Permutation::<u8, 4>::reverse().get_array(), [3,2,1,0]);
     /// assert_eq!(Permutation::<u8, 5>::reverse().get_array(), [4,3,2,1,0]);
     /// ```
-    #[must_use] pub fn reverse() -> Self {
+    #[must_use]
+    pub fn reverse() -> Self {
         let mut swaps = [0; ELEMENTS];
-        for (i, swap) in swaps.iter_mut().enumerate().take(ELEMENTS / 2){
+        for (i, swap) in swaps.iter_mut().enumerate().take(ELEMENTS / 2) {
             *swap = (ELEMENTS - ((2 * i) + 1)) as u8;
         }
         Self::from_swaps(swaps.into_iter())
@@ -452,7 +454,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     /// ```
     pub fn rotate_right() -> Self {
         let mut swaps = [0; ELEMENTS];
-        for (i,  swap) in swaps.iter_mut().enumerate().take(ELEMENTS) {
+        for (i, swap) in swaps.iter_mut().enumerate().take(ELEMENTS) {
             *swap = (ELEMENTS - (i + 1)) as u8;
         }
         Self::from_swaps(swaps.into_iter())
@@ -501,7 +503,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Permutation};
+    use crate::Permutation;
     use anyhow::Ok;
     use itertools::Itertools;
     use ntest::test_case;
@@ -715,7 +717,7 @@ mod tests {
 
     #[test]
     fn test_ser_de() {
-        use serde_test::{Token, assert_tokens};
+        use serde_test::{assert_tokens, Token};
         let perm = Permutation::<u8, 4>::calculate_incomplete(&[2, 0, 1, 3]);
 
         assert_tokens(&perm, &[Token::U8(6)])
