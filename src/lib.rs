@@ -1,5 +1,5 @@
 #![cfg_attr(not(any(test, feature = "std")), no_std)]
-#![doc(html_root_url = "https://docs.rs/importunate/0.1.0")]
+#![doc(html_root_url = "https://docs.rs/importunate/0.1.1")]
 #![deny(missing_docs)]
 #![deny(warnings, dead_code, unused_imports, unused_mut)]
 #![warn(clippy::pedantic)]
@@ -73,9 +73,7 @@ impl<'de, I: Inner + Deserialize<'de>, const ELEMENTS: usize> Deserialize<'de>
         debug_assert!(ELEMENTS <= I::MAX_ELEMENTS);
         let i = I::deserialize(deserializer)?;
         if i > Self::get_last().0 {
-            return Err(serde::de::Error::custom(format!(
-                "number out of range: {i:?}"
-            )));
+            return Err(serde::de::Error::custom("Permutation out of range"));
         }
 
         Ok(Self(i))

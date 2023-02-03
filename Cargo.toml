@@ -1,6 +1,6 @@
 [package]
 name = "importunate"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Mark Wainwright <wainwrightml@gmail.com>"]
 description = "Methods for returning random elements from an iterator."
 documentation = "https://docs.rs/importunate"
