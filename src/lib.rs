@@ -45,8 +45,6 @@
 // more efficient combine
 // more efficient index of element
 // documentation
-// only rely on num-integer
-// arbitrary
 // optional rand
 // errors
 
@@ -62,8 +60,27 @@ use serde::{Deserialize, Serialize};
 
 /// A permutation of a fixed length array
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Permutation<I: Inner, const ELEMENTS: usize>(pub I);
+#[cfg_attr(feature = "serde", derive(Serialize))]
+pub struct Permutation<I: Inner, const Elements: usize>(I);
+
+#[cfg(feature = "serde")]
+impl<'de, I: Inner + Deserialize<'de>, const Elements: usize> Deserialize<'de>
+    for Permutation<I, Elements>
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        debug_assert!(Elements <= I::MAX_ELEMENTS);
+        let i = I::deserialize(deserializer)?;
+        if i > Self::get_max().0{
+            return Err(serde::de::Error::custom(format!("number out of range: {:?}", i)));
+        }
+
+
+        Ok(Self(i))
+    }
+}
 
 #[cfg(feature = "arbitrary")]
 use arbitrary::Arbitrary;
