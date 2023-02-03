@@ -49,6 +49,7 @@
 // errors
 
 pub mod inner;
+pub mod swaps_iterator;
 
 use core::hash::Hash;
 use core::ops::Range;
@@ -86,9 +87,11 @@ impl<'de, I: Inner + Deserialize<'de>, const Elements: usize> Deserialize<'de>
 
 #[cfg(feature = "arbitrary")]
 use arbitrary::Arbitrary;
+use swaps_iterator::SwapsIterator;
 #[cfg(feature = "arbitrary")]
 impl<'a, I: Inner, const Elements: usize> Arbitrary<'a> for Permutation<I, Elements> {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        debug_assert!(Elements <= I::MAX_ELEMENTS);
         let bytes = u.bytes(Self::REQUIRED_BYTES)?;
 
         let inner = I::from_le_byte_array(bytes);
@@ -97,6 +100,7 @@ impl<'a, I: Inner, const Elements: usize> Arbitrary<'a> for Permutation<I, Eleme
     }
 
     fn arbitrary_take_rest(mut u: arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        debug_assert!(Elements <= I::MAX_ELEMENTS);
         Self::arbitrary(&mut u)
     }
 
@@ -136,16 +140,8 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
 
     /// Apply this permutation to an array, reordering the first `Elements` elements
     pub fn apply<T>(&self, arr: &mut [T]) {
-        let mut rem = self.0;
-        let len = arr.len().min(Elements);
-
-        for i in (0..len) {
-            if rem.is_zero() {
-                return;
-            }
-            let (r, diff) = rem.div_rem(&(len - i).try_into().ok().unwrap());
-            rem = r;
-            arr.swap(i, (diff.try_into().ok().unwrap() + i));
+        for (i, swap) in self.swaps().enumerate() {
+            arr.swap(i, swap + i);
         }
     }
 
@@ -154,27 +150,26 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
         let range = I::get_permutation_range(Elements);
         range.map(|x| Self(x))
     }
-    fn get_swaps(&self) -> [usize; Elements] {
+
+    fn swaps(&self) -> SwapsIterator<I, Elements> {
+        SwapsIterator::new(self)
+    }
+
+    fn swaps_array(&self) -> [usize; Elements] {
         let mut swaps = [0; Elements];
 
-        let mut rem = self.0;
-
-        for i in (0..Elements) {
-            if rem.is_zero() {
-                break;
-            }
-            let (r, diff) = rem.div_rem(&(Elements - i).try_into().ok().unwrap());
-            rem = r;
-            swaps[i] = (diff.try_into().ok().unwrap());
+        for (i, swap) in self.swaps().enumerate() {
+            swaps[i] = swap;
         }
         swaps
     }
 
-    fn from_swaps(swaps: &[usize; Elements]) -> Self {
+    fn from_swaps(swaps: impl Iterator<Item = usize>) -> Self {
         let mut inner: I = I::zero();
         let mut mult: I = I::one();
-        for i in 0..Elements {
-            let r = mult * swaps[i].try_into().ok().unwrap();
+
+        for (i, swap) in swaps.enumerate() {
+            let r = mult * swap.try_into().ok().unwrap();
             inner = inner + r;
             mult = mult * (Elements - i).try_into().ok().unwrap();
         }
@@ -193,10 +188,10 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
         total
     }
 
-    fn test_unique(arr: impl Iterator<Item = usize>) -> bool {
+    fn test_unique(iterator: impl Iterator<Item = usize>) -> bool {
         let mut test = 0u64;
 
-        for x in arr.take(Elements) {
+        for x in iterator.take(Elements) {
             test = test | 1 << x;
         }
 
@@ -213,14 +208,13 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
             let mut c = 0;
             for (jindex, el) in slice.iter().take(Elements).enumerate() {
                 match element.cmp(el) {
-                    Ordering::Less => {}
+                    Ordering::Greater => c += 1,
                     Ordering::Equal => {
                         if index > jindex {
                             c += 1;
-                        } else {
                         }
                     }
-                    Ordering::Greater => c += 1,
+                    Ordering::Less => {}
                 }
             }
             arr[index] = c;
@@ -421,7 +415,7 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
     };
 
     pub fn invert(&self) -> Self {
-        let mut swaps = self.get_swaps();
+        let mut swaps = self.swaps_array();
         let mut updated = 0;
 
         for i in (0..Elements).rev() {
@@ -444,7 +438,7 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
             return self.clone();
         }
 
-        Self::from_swaps(&swaps)
+        Self::from_swaps(swaps.into_iter())
 
         /*
         [0, 0, 0, 0] [0, 0, 0, 0]
@@ -535,8 +529,8 @@ mod tests {
     #[test]
     pub fn test_swaps() {
         for permutation in Permutation::<u8, 4>::all() {
-            let swaps = permutation.get_swaps();
-            let ordering2 = Permutation::<u8, 4>::from_swaps(&swaps);
+            let swaps = permutation.swaps_array();
+            let ordering2 = Permutation::<u8, 4>::from_swaps(swaps.into_iter());
 
             assert_eq!(permutation, ordering2)
         }
@@ -577,7 +571,7 @@ mod tests {
         }
 
         insta::assert_snapshot!(combinations
-            .map(|x| format!("{:?}", x.get_swaps()))
+            .map(|x| format!("{:?}", x.swaps_array()))
             .join("\n"))
     }
 
@@ -591,8 +585,8 @@ mod tests {
             println!(
                 "{}:  {:?} {:?}",
                 permutation.0,
-                permutation.get_swaps(),
-                inverse.get_swaps()
+                permutation.swaps_array(),
+                inverse.swaps_array()
             );
 
             let mut arr2 = arr.clone();
@@ -724,8 +718,8 @@ mod tests {
     #[test]
     fn test_ser_de() {
         use serde_test::*;
-        let perm = Permutation::<u8,4> ::calculate_incomplete(&[2,0,1,3]);
+        let perm = Permutation::<u8, 4>::calculate_incomplete(&[2, 0, 1, 3]);
 
-        assert_tokens(&perm, &[ Token::U8(6)])
+        assert_tokens(&perm, &[Token::U8(6)])
     }
 }
