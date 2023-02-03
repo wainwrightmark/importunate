@@ -4,6 +4,12 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use importunate::{inner::Inner, *};
 
 pub fn criterion_benchmark(c: &mut Criterion) {
+    bench_new_index::<u128, 34>(c, 0);
+    bench_new_index::<u128, 34>(c, 33);
+
+    bench_old_index::<u128, 34>(c, 0);
+    bench_old_index::<u128, 34>(c, 33);
+
     bench_combine::<u8, 5>(c);
     bench_combine::<u128, 5>(c);
     bench_combine::<u16, 8>(c);
@@ -27,11 +33,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     bench_apply::<u64, 15>(c);
     bench_apply::<u64, 20>(c);
     bench_apply::<u128, 34>(c);
-    bench_new_index::<u128, 34>(c, 0);
-    bench_new_index::<u128, 34>(c, 33);
 
-    bench_old_index::<u128, 34>(c, 0);
-    bench_old_index::<u128, 34>(c, 33);
 }
 
 fn bench_old_index<I: Inner, const SIZE: usize>(c: &mut Criterion, index: usize) {

@@ -16,7 +16,9 @@ pub trait Inner:
     + Hash
     + Default
     + Integer
+    + From<u8>
     + TryFrom<usize>
+    + TryInto<u8>
     + TryInto<usize>
     + core::iter::Product
 {
