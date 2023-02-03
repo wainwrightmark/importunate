@@ -431,6 +431,46 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         r
     }
 
+    /// Gets the reverse permutation for this number of elements.
+    /// ```
+    /// use importunate::Permutation;
+    /// assert_eq!(Permutation::<u8, 4>::reverse().get_array(), [3,2,1,0]);
+    /// assert_eq!(Permutation::<u8, 5>::reverse().get_array(), [4,3,2,1,0]);
+    /// ```
+    pub fn reverse()-> Self{
+        let mut swaps = [0;ELEMENTS];
+        for i in 0..(ELEMENTS / 2){
+            swaps[i] = (ELEMENTS - ((2 * i) + 1)) as u8;
+        }
+        Self::from_swaps(swaps.into_iter())
+    }
+
+    #[must_use]
+    /// Gets the rotate right permutation for this number of elements.
+    /// ```
+    /// use importunate::Permutation;
+    /// assert_eq!(Permutation::<u8, 4>::rotate_right().get_array(), [3,0,1,2]);
+    /// ```
+    pub fn rotate_right()-> Self{
+        let mut swaps = [0;ELEMENTS];
+        for i in 0..ELEMENTS{
+            swaps[i] = (ELEMENTS - (i + 1)) as u8;
+        }
+        Self::from_swaps(swaps.into_iter())
+    }
+
+    #[must_use]
+    /// Gets the rotate left permutation for this number of elements.
+    /// ```
+    /// use importunate::Permutation;
+    /// assert_eq!(Permutation::<u8, 4>::rotate_left().get_array(), [1,2,3,0]);
+    /// ```
+    pub fn rotate_left()-> Self{
+        let mut swaps = [1;ELEMENTS];
+        swaps[ELEMENTS - 1] = 0;
+        Self::from_swaps(swaps.into_iter())
+    }
+
     //The slow (but oh so elegant) version of combine
     // pub fn combine(&self, rhs: &Self) -> Self {
     //     let mut left_swaps = self.swaps_array();
