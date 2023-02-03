@@ -43,7 +43,6 @@
 
 // TODO
 // more efficient combine
-// more efficient index of element
 // documentation
 // optional rand
 // errors
@@ -293,12 +292,33 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
         current.into()
     }
 
-    pub fn index_of<T, F: Fn(&T) -> usize>(&self, element: &T, f: F) -> usize {
-        //TODO more efficient implementation
+    pub fn index_of<T, F: Fn(&T) -> u8>(&self, element: &T, f: F) -> u8 {
+
         let old_index = f(element);
-        debug_assert!(old_index < Elements);
-        let arr = self.get_array();
-        get_index_of(&arr, old_index)
+        debug_assert!(usize::from(old_index) < Elements);
+
+        Self::index_of_element_from_swaps(self.swaps(), old_index)
+    }
+
+    fn index_of_element_from_swaps(swaps_iter: impl Iterator<Item=u8>, mut index: u8) -> u8 {
+
+        for (j, diff) in swaps_iter.enumerate(){
+            let j = j as u8;
+            match j.cmp(&index) {
+                Ordering::Less => {
+                    if j + diff == index {
+                        return j.into();
+                    }
+                }
+                Ordering::Equal => {
+                    index =  index + diff;
+                }
+                Ordering::Greater => {
+                    break;
+                }
+            }
+        }
+        return index;
     }
 
     const DEFAULT_ARRAY: [usize; Elements] = {
@@ -434,8 +454,6 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
     //     //     }
     //     // }
     // }
-
-
 }
 
 #[cfg(test)]
@@ -603,16 +621,16 @@ mod tests {
             let mut arr1 = [0, 1, 2, 3];
             let mut arr2 = [0, 1, 2, 3];
 
-            for index in 0..4usize {
-                arr1[index] = arr
+            for index in 0..4u8 {
+                arr1[index as usize] = arr
                     .iter()
                     .enumerate()
                     .filter(|(i, x)| x == &&index)
                     .next()
                     .unwrap()
-                    .0;
+                    .0 as u8;
 
-                arr2[index] = perm.index_of(&index, |&x| x);
+                arr2[index as usize] = perm.index_of(&index, |&x| x as u8);
             }
 
             assert_eq!(arr1, arr2)

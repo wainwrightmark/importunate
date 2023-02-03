@@ -44,7 +44,7 @@ fn bench_old_index<I: Inner, const SIZE: usize>(c: &mut Criterion, index: usize)
     });
 }
 
-fn bench_new_index<I: Inner, const SIZE: usize>(c: &mut Criterion, index: usize) {
+fn bench_new_index<I: Inner, const SIZE: usize>(c: &mut Criterion, index: u8) {
     c.bench_function(format!("new index {SIZE} {index}").as_str(), |b| {
         let perm = Permutation::<I, SIZE>::get_max();
 
@@ -97,8 +97,8 @@ fn apply<I: Inner, const SIZE: usize>(
 
 fn new_index<I: Inner, const SIZE: usize>(
     permutation: Permutation<I, SIZE>,
-    index: usize,
-) -> usize {
+    index: u8,
+) -> u8 {
     permutation.index_of(&index, |&x| x)
 }
 
