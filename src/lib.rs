@@ -42,7 +42,6 @@
 //! [`README.md`]: https://github.com/wainwrightmark/importunate
 
 // TODO
-// more efficient combine
 // documentation
 // optional rand
 // errors
@@ -278,10 +277,10 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
 
         let old_index = Self::element_at_index_from_swaps(&swaps, new_index as u8);
 
-        f(old_index)
+        f(old_index.into())
     }
 
-    fn element_at_index_from_swaps(swaps: &[u8], index: u8) -> usize {
+    fn element_at_index_from_swaps(swaps: &[u8], index: u8) -> u8 {
         let mut current = swaps[usize::from(index)] + index;
 
         for j in (0..index).rev() {
@@ -289,20 +288,18 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
                 current = j;
             }
         }
-        current.into()
+        current
     }
 
     pub fn index_of<T, F: Fn(&T) -> u8>(&self, element: &T, f: F) -> u8 {
-
         let old_index = f(element);
         debug_assert!(usize::from(old_index) < Elements);
 
         Self::index_of_element_from_swaps(self.swaps(), old_index)
     }
 
-    fn index_of_element_from_swaps(swaps_iter: impl Iterator<Item=u8>, mut index: u8) -> u8 {
-
-        for (j, diff) in swaps_iter.enumerate(){
+    fn index_of_element_from_swaps(swaps_iter: impl Iterator<Item = u8>, mut index: u8) -> u8 {
+        for (j, diff) in swaps_iter.enumerate() {
             let j = j as u8;
             match j.cmp(&index) {
                 Ordering::Less => {
@@ -311,7 +308,7 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
                     }
                 }
                 Ordering::Equal => {
-                    index =  index + diff;
+                    index = index + diff;
                 }
                 Ordering::Greater => {
                     break;
@@ -337,12 +334,7 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
         arr
     }
 
-    pub fn combine(&self, rhs: &Self) -> Self {
-        let mut arr = self.get_array();
-        rhs.apply(&mut arr);
-        let r = Self::calculate_unchecked(arr, |&x| x);
-        r
-    }
+
 
     pub fn to_le_byte_array<const BYTES: usize>(&self) -> [u8; BYTES] {
         assert!(BYTES >= Self::REQUIRED_BYTES);
@@ -417,94 +409,68 @@ impl<I: Inner, const Elements: usize> Permutation<I, Elements> {
         Self(inner - I::one())
     }
 
-    // pub fn combine2(&self, rhs: &Self) -> Self {
-    //     let mut left_swaps = self.swaps_array();
-    //     let mut right_swaps = rhs.swaps_array();
 
-    //     for (i, &diff) in right_swaps.iter().enumerate() {
-    //         Self::swap_swaps(&mut left_swaps[i..], diff)
+    pub fn combine(&self, rhs: &Self) -> Self {
+        let mut arr = self.get_array();
+        rhs.apply(&mut arr);
+        let r = Self::calculate_unchecked(arr, |&x| x);
+        r
+    }
+
+    //The slow (but oh so elegant) version of combine
+    // pub fn combine(&self, rhs: &Self) -> Self {
+    //     let mut left_swaps = self.swaps_array();
+    //     for (i, diff) in rhs.swaps().enumerate() {
+    //         Self::swap_swaps(&mut left_swaps[i..], diff);
     //     }
 
     //     Self::from_swaps(left_swaps.into_iter())
     // }
 
-    // fn swap_swaps(swaps_arr: &mut [usize], n: usize) {
-    //     if n == 0 {
-    //         return;
+    // fn swap_swaps(mut swaps_arr: &mut [u8], mut diff: u8) {
+    //     while diff > 0 {
+    //         let index_of_zero = Self::index_of_element_from_swaps(swaps_arr.into_iter().map(|x|*x), 0);
+    //         let element_at_n = Self::element_at_index_from_swaps(swaps_arr, diff);
+
+    //         swaps_arr[0] = element_at_n;
+    //         if index_of_zero > 0 {
+    //             let min = diff.min(index_of_zero);
+    //             diff = diff.abs_diff(index_of_zero);
+    //             swaps_arr = &mut swaps_arr[(min as usize)..];
+    //             diff = diff;
+    //         }
+    //         else{
+    //             break;
+    //         }
     //     }
-
-    //     let element_at_zero = Self::element_at_index_from_swaps(swaps_arr, 0);
-    //     let element_at_n = Self::element_at_index_from_swaps(swaps_arr, n);
-
-    //     swaps_arr[0]
-
-    //     // if element_at_n == 0 && element_at_zero != n {
-    //     //     swaps_arr[0] = element_at_zero;
-    //     //     swaps_arr[n] = 0;
-    //     // } else {
-    //     //     swaps_arr[0] = element_at_n;
-
-    //     //     if element_at_zero == 0 {
-    //     //         //nothing
-    //     //     } else if element_at_zero > n {
-    //     //         swaps_arr[n] = element_at_zero - n;
-    //     //     } else {
-    //     //         swaps_arr[element_at_zero] = n - element_at_zero;
-    //     //         //swaps_arr[index] = 0;
-    //     //     }
-    //     // }
     // }
 }
 
 #[cfg(test)]
 mod tests {
-    use core::ops::Range;
-    use std::collections::HashSet;
-
+    use crate::{Inner, Permutation};
     use anyhow::Ok;
+    use core::ops::Range;
     use itertools::Itertools;
     use ntest::test_case;
+    use std::collections::HashSet;
 
-    use crate::{Inner, Permutation};
+    #[test]
+    pub fn test_combine() {
+        let mut combinations = [Permutation::<u8, 4>::default(); 576];
+        let mut i = 0;
+        for p_left in Permutation::<u8, 4>::all() {
+            for p_right in Permutation::<u8, 4>::all() {
+                let combined1 = p_left.combine(&p_right);
+                combinations[i] = combined1;
+                i += 1;
+            }
+        }
 
-    // #[test]
-    // pub fn test_combine2() {
-    //     let p_left = Permutation::<u8, 4>(5);
-    //     let p_right = Permutation::<u8, 4>(2);
-
-    //     let combined = p_left.combine2(&p_right);
-    //     println!("{combined:?}");
-    //     panic!("End of test")
-    // }
-
-    // #[test]
-    // pub fn test_combine() {
-    //     let mut combinations = [Permutation::<u8, 4>::default(); 576];
-    //     let mut i = 0;
-    //     for p_left in Permutation::<u8, 4>::all() {
-    //         for p_right in Permutation::<u8, 4>::all() {
-    //             let combined1 = p_left.combine(&p_right);
-    //             let combined2 = p_left.combine2(&p_right);
-    //             combinations[i] = combined1;
-    //             i += 1;
-    //             println!(
-    //                 "{:>2} + {:>2} = {:>2}; {:?} + {:?} = {:?}",
-    //                 p_left.0,
-    //                 p_right.0,
-    //                 combined1.0,
-    //                 p_left.swaps_array(),
-    //                 p_right.swaps_array(),
-    //                 combined1.swaps_array()
-    //             );
-
-    //             assert_eq!(combined1.swaps_array(), combined2.swaps_array())
-    //         }
-    //     }
-
-    //     insta::assert_snapshot!(combinations
-    //         .map(|x| format!("{:?}", x.swaps_array()))
-    //         .join("\n"))
-    // }
+        insta::assert_snapshot!(combinations
+            .map(|x| format!("{:?}", x.swaps_array()))
+            .join("\n"))
+    }
 
     #[test]
     pub fn test_calculate_incomplete() {
