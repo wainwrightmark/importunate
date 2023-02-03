@@ -215,8 +215,9 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         Self::calculate_unchecked(arr, |&x| x as u8)
     }
 
+    /// *DO NOT USE THIS FUNCTION ON USER INPUT*
     /// Calculate the permutation of an array.
-    /// This will panic or loop forever if the arrays elements contain duplicates or elements outsize `0..ELEMENTS`
+    /// This will panic or loop forever if the array's elements contain duplicates or elements outsize `0..ELEMENTS`
     #[must_use]
     pub fn calculate_unchecked<T, F: Fn(&T) -> u8>(mut arr: [T; ELEMENTS], f: F) -> Self {
         debug_assert!(Self::test_unique(arr.iter().map(|x| f(x))));
