@@ -54,6 +54,7 @@ use core::hash::Hash;
 use core::{cmp::Ordering, fmt::Debug};
 
 use inner::Inner;
+use num_integer::Integer;
 #[cfg(any(test, feature = "serde"))]
 use serde::{Deserialize, Serialize};
 
@@ -468,6 +469,41 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         let mut swaps = [1; ELEMENTS];
         swaps[ELEMENTS - 1] = 0;
         Self::from_swaps(swaps.into_iter())
+    }
+
+    /// Gets the permutation corresponding to a pile shuffle with a given number of piles (must be at least one)
+    /// ```
+    /// use importunate::Permutation;
+    /// assert_eq!(Permutation::<u64, 13>::pile_shuffle(3).get_array(), [0, 3, 6, 9, 12, 1, 4, 7, 10, 2, 5, 8, 11]);
+    /// ```
+    pub fn pile_shuffle(piles : u8)-> Self{
+        debug_assert!(piles >= 1);
+        let mut arr = [0u8; ELEMENTS];
+        let mut current = 0;
+        let mut pile_number = 0;
+        for i in 0..ELEMENTS{
+            arr[i] = current;
+            current += piles;
+            if current >= ELEMENTS as u8{
+                pile_number += 1;
+                current = pile_number;
+            }
+        }
+
+        Self::calculate_unchecked(arr, |&x|x)
+    }
+
+    /// Gets the permutation corresponding to interleaving elements.
+    /// This is the inverse of the pile shuffle
+    /// ```
+    /// use importunate::Permutation;
+    /// assert_eq!(Permutation::<u64, 13>::interleave(3).get_array(), [0, 5, 10, 1, 6, 11, 2, 7, 12, 3, 8, 4, 9]);
+    /// ```
+    pub fn interleave(groups: u8)-> Self{
+        debug_assert!(groups >= 1);
+        let (div, rem) = (ELEMENTS as u8).div_rem(&groups);
+        let group_size = if rem == 0 {div} else{ div + 1};
+        Self::pile_shuffle(group_size)
     }
 
     //The slow (but oh so elegant) version of combine
