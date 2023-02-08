@@ -476,21 +476,21 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     /// use importunate::Permutation;
     /// assert_eq!(Permutation::<u64, 13>::pile_shuffle(3).get_array(), [0, 3, 6, 9, 12, 1, 4, 7, 10, 2, 5, 8, 11]);
     /// ```
-    pub fn pile_shuffle(piles : u8)-> Self{
+    pub fn pile_shuffle(piles: u8) -> Self {
         debug_assert!(piles >= 1);
         let mut arr = [0u8; ELEMENTS];
         let mut current = 0;
         let mut pile_number = 0;
-        for i in 0..ELEMENTS{
+        for i in 0..ELEMENTS {
             arr[i] = current;
             current += piles;
-            if current >= ELEMENTS as u8{
+            if current >= ELEMENTS as u8 {
                 pile_number += 1;
                 current = pile_number;
             }
         }
 
-        Self::calculate_unchecked(arr, |&x|x)
+        Self::calculate_unchecked(arr, |&x| x)
     }
 
     /// Gets the permutation corresponding to interleaving elements.
@@ -499,11 +499,44 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     /// use importunate::Permutation;
     /// assert_eq!(Permutation::<u64, 13>::interleave(3).get_array(), [0, 5, 10, 1, 6, 11, 2, 7, 12, 3, 8, 4, 9]);
     /// ```
-    pub fn interleave(groups: u8)-> Self{
+    pub fn interleave(groups: u8) -> Self {
         debug_assert!(groups >= 1);
         let (div, rem) = (ELEMENTS as u8).div_rem(&groups);
-        let group_size = if rem == 0 {div} else{ div + 1};
+        let group_size = if rem == 0 { div } else { div + 1 };
         Self::pile_shuffle(group_size)
+    }
+
+    /// Find which of the options simplifies this permutation the most
+    pub fn find_simplification(&self, options: &[Self]) -> Option<Self> {
+        let this_swaps = self.swaps_array();
+        let c = this_swaps.iter().filter(|&x| x > &0).count();
+        let total: u8 = this_swaps.iter().sum();
+        if c == 0 {
+            return None;
+        };
+
+        let mut best = (Self(I::zero()), c, total);
+        for rhs in options {
+            //let mut swaps2 = this_swaps.clone();
+            //for (i, diff) in rhs.swaps().enumerate() {
+            let new_perm = self.combine(rhs);
+            //Self::swap_swaps(&mut swaps2[i..], diff);
+            let new_c = new_perm.swaps().filter(|&x| x > 0).count();
+            let new_total = new_perm.swaps().sum();
+            if new_c < best.1 {
+                if new_c == 0 {
+                    return Some(*rhs);
+                }
+                best = (*rhs, new_c, new_total);
+            }else if new_c == best.1 && new_total < best.2{
+                best = (*rhs, new_c, new_total);
+            }
+        }
+
+        if best.0 .0.is_zero() {
+            return None;
+        }
+        return Some(best.0);
     }
 
     //The slow (but oh so elegant) version of combine
@@ -518,7 +551,8 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
 
     // fn swap_swaps(mut swaps_arr: &mut [u8], mut diff: u8) {
     //     while diff > 0 {
-    //         let index_of_zero = Self::index_of_element_from_swaps(swaps_arr.into_iter().map(|x|*x), 0);
+    //         let index_of_zero =
+    //             Self::index_of_element_from_swaps(swaps_arr.into_iter().map(|x| *x), 0);
     //         let element_at_n = Self::element_at_index_from_swaps(swaps_arr, diff);
 
     //         swaps_arr[0] = element_at_n;
@@ -527,8 +561,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     //             diff = diff.abs_diff(index_of_zero);
     //             swaps_arr = &mut swaps_arr[(min as usize)..];
     //             diff = diff;
-    //         }
-    //         else{
+    //         } else {
     //             break;
     //         }
     //     }
@@ -755,5 +788,39 @@ mod tests {
         let perm = Permutation::<u8, 4>::calculate_incomplete(&[2, 0, 1, 3]);
 
         assert_tokens(&perm, &[Token::U8(6)])
+    }
+
+    #[test]
+    fn test_simplify() {
+        type Perm = Permutation<u64, 13>;
+        let mut current = Perm::from(4886114603);
+        let options = [
+            Perm::rotate_right(),
+            Perm::rotate_left(),
+            Perm::reverse(),
+            Perm::pile_shuffle(2),
+            Perm::pile_shuffle(3),
+            Perm::pile_shuffle(4),
+            Perm::pile_shuffle(5),
+            Perm::pile_shuffle(6),
+            Perm::pile_shuffle(7),
+            Perm::pile_shuffle(8),
+            Perm::pile_shuffle(9),
+            Perm::pile_shuffle(10),
+            Perm::pile_shuffle(11),
+            Perm::pile_shuffle(12),
+        ];
+        loop {
+            println!("{current:?} {:?}", current.swaps_array());
+
+            if let Some(simplification) = current.find_simplification(&options) {
+                println!("Apply {simplification:?}");
+                current = current.combine(&simplification);
+            } else if current.0 == 0 {
+                println!("Fully simlpified");
+            } else {
+                panic!("Not fully simplified");
+            }
+        }
     }
 }
