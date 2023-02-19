@@ -26,7 +26,7 @@ pub trait Inner:
     const BYTES: usize;
 
     /// Range iterator for this type
-    type RangeIter: Iterator<Item = Self>;
+    type RangeIter: DoubleEndedIterator<Item = Self>;
 
     #[must_use]
     /// Get the range of legal permutations for a given number of elements
