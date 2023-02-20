@@ -50,6 +50,7 @@ mod cyclic_generator;
 /// Inner types that Permutations can use
 pub mod inner;
 mod swaps_iterator;
+mod decomposer;
 
 use core::hash::Hash;
 use core::{cmp::Ordering, fmt::Debug};
@@ -547,18 +548,18 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
 
     /// Generate the cycle with this permutation as the operator
     fn generate_cycle(self) -> impl Iterator<Item = Self> {
-        cyclic_generator::CyclicGenerator::new(self)
+        cyclic_generator::CyclicGenerator::from(self)
     }
 
-    #[cfg(any(test, feature = "serde"))]
+    fn decompose(self)-> impl Iterator<Item = Self>{
+        decomposer::Decomposer::from(self)
+    }
+
+    #[cfg(any(test, feature = "std"))]
     fn primitives() -> Vec<Self> {
         let mut primitives: Vec<Self> = vec![];
         let mut generated: std::collections::BTreeSet<Self> = Default::default();
         generated.insert(Self::default());
-        // generated.extend(Self::reverse().generate_cycle());
-        // primitives.push(Self::reverse());
-        // generated.extend(Self::rotate_right().generate_cycle());
-        // primitives.push(Self::rotate_right());
 
         let mut ordered: Vec<_> = Self::all().rev().collect();
         ordered.sort_by_cached_key(|x| x.generate_cycle().count());
@@ -624,6 +625,21 @@ mod tests {
     use itertools::Itertools;
     use ntest::test_case;
     use std::collections::HashSet;
+
+    #[test]
+    pub fn test_decompose(){
+        type Perm = Permutation<u16, 6>;
+        for perm in Perm::all(){
+            let decomposed = perm.decompose().collect_vec();
+
+            let product_left = decomposed.iter().fold(Perm::default(), |x,b| x.combine(b) );
+            let product_right = decomposed.iter().fold(Perm::default(), |x,b| b.combine(&x) );
+
+            println!("{:?}: {:?}",perm.get_array(), decomposed.iter().map(|x|format!("({:?})", x.get_array())) .join(""));
+            assert_eq!(perm, product_left);
+            assert_eq!(perm, product_right);
+        }
+    }
 
     #[test]
     pub fn generate_primitives6() {
