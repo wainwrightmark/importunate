@@ -139,7 +139,6 @@ impl<I: Inner, const ELEMENTS: usize> Display for Permutation<I, ELEMENTS> {
 }
 
 impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
-
     /// The inner value of this permutation
     pub fn inner(&self) -> I {
         self.0
@@ -159,6 +158,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     }
 
     /// The range of all possible permutations of this number of elements
+    #[must_use]
     pub fn all() -> impl DoubleEndedIterator<Item = Self> {
         let range = I::get_permutation_range(ELEMENTS);
         range.map(|x| Self(x))
@@ -169,12 +169,10 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         self.0.is_zero()
     }
 
-
     fn swaps(&self) -> SwapsIterator<I> {
         SwapsIterator::new(self)
     }
 
-    #[must_use]
     fn swaps_array(&self) -> [u8; ELEMENTS] {
         let mut swaps = [0; ELEMENTS];
 
@@ -184,7 +182,6 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         swaps
     }
 
-    #[must_use]
     fn from_swaps(swaps: impl Iterator<Item = u8>) -> Self {
         let mut inner: I = I::zero();
         let mut mult: I = I::one();
@@ -198,7 +195,6 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         Self(inner)
     }
 
-    #[must_use]
     fn test_unique(iterator: impl Iterator<Item = u8>) -> bool {
         let mut test = 0u64;
 
@@ -209,7 +205,6 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         test.count_ones() as usize == ELEMENTS
     }
 
-    #[must_use]
     /// Calculate the permutation for any list, even one containing duplicates.
     /// There is a performance penalty for using this - it will make n * n comparisons
     pub fn calculate_incomplete<T: Ord>(slice: &[T]) -> Self {
@@ -239,7 +234,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     /// # Panics
     ///
     /// This will panic or loop forever if the array's elements contain duplicates or elements outsize `0..ELEMENTS`
-    #[must_use]
+
     pub fn calculate_unchecked<T, F: Fn(&T) -> u8>(mut arr: [T; ELEMENTS], mut f: F) -> Self {
         debug_assert!(Self::test_unique(arr.iter().map(&mut f)));
         let mut slot_multiplier: I = I::one();
@@ -270,7 +265,6 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         Self(inner)
     }
 
-    #[must_use]
     /// Calculate the permutation of an array
     /// This will return `None` if the array's elements contain duplicates or elements outsize `0..ELEMENTS`
     pub fn try_calculate<T, F: Fn(&T) -> u8>(arr: [T; ELEMENTS], mut f: F) -> Option<Self> {
@@ -280,7 +274,6 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         Some(Self::calculate_unchecked(arr, f))
     }
 
-    #[must_use]
     /// Get the element at the given index of the permutation
     pub fn element_at_index<T, F: Fn(u8) -> T>(&self, new_index: u8, f: F) -> T {
         debug_assert!((new_index as usize) < ELEMENTS);
@@ -296,7 +289,6 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         f(old_index)
     }
 
-    #[must_use]
     fn element_at_index_from_swaps(swaps: &[u8], index: u8) -> u8 {
         let mut current = swaps[usize::from(index)] + index;
 
@@ -308,7 +300,6 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         current
     }
 
-    #[must_use]
     /// Get the new index of the given element from the permutation
     pub fn index_of<T, F: Fn(&T) -> u8>(&self, element: &T, f: F) -> u8 {
         let old_index = f(element);
@@ -347,7 +338,6 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         arr
     };
 
-    #[must_use]
     /// Get the complete array of this permutation's elements
     pub fn get_array(&self) -> [u8; ELEMENTS] {
         let mut arr = Self::DEFAULT_ARRAY;
@@ -355,7 +345,6 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         arr
     }
 
-    #[must_use]
     /// Write this permutation to a byte array
     /// Panics if `BYTES` is too small for permutations of this many elements
     /// See `REQUIRED_BYTES`
@@ -365,10 +354,10 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         self.0.to_le_byte_array()
     }
 
-    #[must_use]
     /// Read this permutation from a byte array
     /// Panics if `BYTES` is too small for permutations of this many elements
     /// See `REQUIRED_BYTES`
+    #[must_use]
     pub fn try_from_le_byte_array(bytes: &[u8]) -> Option<Self> {
         debug_assert!(bytes.len() >= Self::REQUIRED_BYTES);
 
@@ -405,7 +394,6 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         }
     };
 
-    #[must_use]
     /// Invert this permutation
     /// This produces the permutation that will reorder the array back to its original order
     pub fn invert(&self) -> Self {
@@ -436,14 +424,12 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         Self::from_swaps(swaps.into_iter())
     }
 
-    #[must_use]
     /// Gets the permutation of this many elements with the highest inner value
     pub fn get_last() -> Self {
         let inner = I::get_factorial(ELEMENTS);
         Self(inner - I::one())
     }
 
-    #[must_use]
     /// Combine this permutation with another. Producing a permutation equivalent to performing this and then the other.
     /// Note that this operation is neither commutative nor associative
     pub fn combine(&self, rhs: &Self) -> Self {
@@ -459,7 +445,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     /// assert_eq!(Permutation::<u8, 4>::reverse().get_array(), [3,2,1,0]);
     /// assert_eq!(Permutation::<u8, 5>::reverse().get_array(), [4,3,2,1,0]);
     /// ```
-    #[must_use]
+
     pub fn reverse() -> Self {
         let mut swaps = [0; ELEMENTS];
         for (i, swap) in swaps.iter_mut().enumerate().take(ELEMENTS / 2) {
@@ -468,7 +454,6 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         Self::from_swaps(swaps.into_iter())
     }
 
-    #[must_use]
     /// Gets the rotate right permutation for this number of elements.
     /// ```
     /// use importunate::Permutation;
@@ -481,7 +466,6 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         }
         Self::from_swaps(swaps.into_iter())
     }
-
 
     /// Gets the rotate left permutation for this number of elements.
     /// ```
@@ -499,11 +483,11 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     /// use importunate::Permutation;
     /// assert_eq!(Permutation::<u8, 5>::rotate_n(2).get_array(), [3,4,0,1,2]);
     /// ```
-    pub fn rotate_n(n: usize) -> Self{
+    pub fn rotate_n(n: usize) -> Self {
         let rhs = Self::rotate_right();
         let mut p = Self::default();
-        for _ in 0..n{
-            p = p.combine(&rhs)
+        for _ in 0..n {
+            p = p.combine(&rhs);
         }
         p
     }
@@ -524,8 +508,8 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         let mut arr = [0u8; ELEMENTS];
         let mut current = 0;
         let mut pile_number = 0;
-        for i in 0..ELEMENTS {
-            arr[i] = current;
+        for element in arr.iter_mut() {
+            *element = current;
             current += piles;
             if current >= ELEMENTS as u8 {
                 pile_number += 1;
@@ -566,7 +550,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         if best.0 .0.is_zero() {
             return None;
         }
-        return Some(best.0);
+        Some(best.0)
     }
 
     /// Generate the cycle with this permutation as the operator
@@ -645,7 +629,7 @@ mod tests {
         let perm = Permutation::<u8, 5>::rotate_right();
         let generator = perm.generate_cycle();
         let vec = generator.map(|x| x.0).collect_vec();
-        assert_eq!(vec![119, 98, 112, 86, 0], vec)
+        assert_eq!(vec![119, 98, 112, 86, 0], vec);
     }
 
     #[test]
@@ -662,7 +646,7 @@ mod tests {
 
         insta::assert_snapshot!(combinations
             .map(|x| format!("{:?}", x.swaps_array()))
-            .join("\n"))
+            .join("\n"));
     }
 
     #[test]
@@ -674,7 +658,7 @@ mod tests {
 
         let converted = String::from_utf8(to_change).unwrap();
 
-        assert_eq!(converted, "aaagmnr")
+        assert_eq!(converted, "aaagmnr");
     }
 
     #[test]
@@ -700,7 +684,7 @@ mod tests {
             let bytes: [u8; 3] = perm.to_le_byte_array();
 
             let perm2 = Permutation::<u32, 10>::try_from_le_byte_array(&bytes).unwrap();
-            assert_eq!(perm, perm2)
+            assert_eq!(perm, perm2);
         }
     }
 
@@ -710,7 +694,7 @@ mod tests {
             let swaps = permutation.swaps_array();
             let ordering2 = Permutation::<u8, 4>::from_swaps(swaps.into_iter());
 
-            assert_eq!(permutation, ordering2)
+            assert_eq!(permutation, ordering2);
         }
     }
 
@@ -731,7 +715,7 @@ mod tests {
             inverse.apply(&mut arr2);
             let new_perm = Permutation::<u8, 4>::try_calculate(arr2, |&x| x).unwrap();
 
-            assert_eq!(0, new_perm.0)
+            assert_eq!(0, new_perm.0);
         }
     }
 
@@ -741,7 +725,7 @@ mod tests {
             let mut arr = permutation.get_array();
             permutation.apply_inverse(&mut arr);
 
-            assert_eq!(arr, Permutation::<u8, 4>::DEFAULT_ARRAY)
+            assert_eq!(arr, Permutation::<u8, 4>::DEFAULT_ARRAY);
         }
     }
 
@@ -782,13 +766,13 @@ mod tests {
                 arr2[index as usize] = perm.index_of(&index, |&x| x);
             }
 
-            assert_eq!(arr1, arr2)
+            assert_eq!(arr1, arr2);
         }
     }
 
     #[test]
     pub fn all_possible_orderings_are_unique() -> Result<(), anyhow::Error> {
-        let mut set: HashSet<[u8; 4]> = Default::default();
+        let mut set: HashSet<[u8; 4]> = std::collections::HashSet::default();
 
         for perm in Permutation::<u8, 4>::all() {
             let arr = perm.get_array();
@@ -808,7 +792,7 @@ mod tests {
             let arr = perm.get_array();
             let calculated = Permutation::<u8, 4>::try_calculate(arr, |x| *x).unwrap();
 
-            assert_eq!(perm, calculated)
+            assert_eq!(perm, calculated);
         }
     }
 
@@ -859,6 +843,6 @@ mod tests {
         use serde_test::{assert_tokens, Token};
         let perm = Permutation::<u8, 4>::calculate_incomplete(&[2, 0, 1, 3]);
 
-        assert_tokens(&perm, &[Token::U8(6)])
+        assert_tokens(&perm, &[Token::U8(6)]);
     }
 }

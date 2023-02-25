@@ -34,7 +34,7 @@ impl<I: Inner, const ELEMENTS: usize> SolveContext<I, ELEMENTS> {
         'outer: while !perm.is_default() {
             let next = (moves_mod_3 + 2) % 3;
 
-            for m in self.moves.iter() {
+            for m in &self.moves {
                 let combined = perm.combine(m);
                 let mm3 = self.get_bits(combined);
                 if mm3 == next {
@@ -49,28 +49,31 @@ impl<I: Inner, const ELEMENTS: usize> SolveContext<I, ELEMENTS> {
         }
         result.reverse();
 
-        return Some(result);
+        Some(result)
     }
 
     fn get_bits(&self, perm: Permutation<I, ELEMENTS>) -> u8 {
-        let us: usize = perm.0.try_into().unwrap_or_else(|_|unreachable!());
+        let us: usize = perm.0.try_into().unwrap_or_else(|_| unreachable!());
         let index = us / 4usize;
 
         let shift = (us % 4) * 2;
         3u8 & (self.vec[index] >> shift)
     }
 
-    fn combine_arrays(lhs: &[u8; ELEMENTS], rhs_swaps: &[u8; ELEMENTS])-> [u8; ELEMENTS]{
-        let mut result = lhs.clone();
+    fn combine_arrays(lhs: &[u8; ELEMENTS], rhs_swaps: &[u8; ELEMENTS]) -> [u8; ELEMENTS] {
+        let mut result = *lhs;
 
-        for (index, &swap) in rhs_swaps.iter().enumerate(){
-            result.swap(index, index + usize::from(swap))
-
+        for (index, &swap) in rhs_swaps.iter().enumerate() {
+            result.swap(index, index + usize::from(swap));
         }
         result
     }
 
     /// Create a new solver from a fixed set of moves
+    /// # Panics
+    ///
+    /// This will panic if the number of possible solutions is greater than `usize::MAX`
+    #[must_use]
     pub fn new(moves: Vec<Permutation<I, ELEMENTS>>) -> Self {
         let Ok(total) = I::get_factorial(ELEMENTS).try_into() else{
             panic!("Cannot solve for {ELEMENTS} elements!");
@@ -79,19 +82,18 @@ impl<I: Inner, const ELEMENTS: usize> SolveContext<I, ELEMENTS> {
         let mut vec = vec![u8::MAX; total];
 
         let mut number_solvable = 1;
-        let current: &mut Vec<[u8; ELEMENTS]> = &mut vec![Permutation::<I, ELEMENTS>::default().get_array()];
+        let current: &mut Vec<[u8; ELEMENTS]> =
+            &mut vec![Permutation::<I, ELEMENTS>::default().get_array()];
         let next: &mut Vec<[u8; ELEMENTS]> = &mut vec![];
 
-        let move_swaps: Vec<_> = moves.iter().map(|x|x.swaps_array()).collect();
+        let move_swaps: Vec<_> = moves.iter().map(Permutation::swaps_array).collect();
 
         let mut moves_mod_3 = 0;
         while !current.is_empty() && number_solvable <= total {
             for perm_arr in current.drain(..) {
-                let us: usize;
-                let perm1 = Permutation::<I, ELEMENTS>::calculate_unchecked(perm_arr, |x|*x);
+                let perm1 = Permutation::<I, ELEMENTS>::calculate_unchecked(perm_arr, |x| *x);
 
-
-                us = perm1.0.try_into().unwrap_or_else(|_|unreachable!());
+                let us: usize = perm1.0.try_into().unwrap_or_else(|_| unreachable!());
 
                 let index = us / 4usize;
                 let shift = (us % 4) * 2;
@@ -105,7 +107,7 @@ impl<I: Inner, const ELEMENTS: usize> SolveContext<I, ELEMENTS> {
                     vec[index] = new_bits;
                     //println!("Perm {perm:03?} set {index:03} shifted {shift:01} to {moves_mod_3:02b} -> {new_bits:08b}" );
 
-                    for swaps in move_swaps.iter() {
+                    for swaps in &move_swaps {
                         let next_perm = Self::combine_arrays(&perm_arr, swaps);
                         next.push(next_perm);
                     }
@@ -120,7 +122,9 @@ impl<I: Inner, const ELEMENTS: usize> SolveContext<I, ELEMENTS> {
         Self {
             vec,
             moves,
-            number_solvable:  number_solvable.try_into().unwrap_or_else(|_|unreachable!())
+            number_solvable: number_solvable
+                .try_into()
+                .unwrap_or_else(|_| unreachable!()),
         }
     }
 }
@@ -130,15 +134,15 @@ mod tests {
     use itertools::Itertools;
 
     use super::SolveContext;
-    use crate::*;
+    use crate::{Inner, Permutation};
 
     fn head_swaps<I: Inner, const ELEMENTS: usize>(
     ) -> impl Iterator<Item = Permutation<I, ELEMENTS>> {
         (1..=ELEMENTS).map(|i| {
             let mut swaps = [0u8; ELEMENTS];
             swaps[0] = i as u8;
-            let perm = Permutation::<I, ELEMENTS>::from_swaps(swaps.into_iter());
-            perm
+
+            Permutation::<I, ELEMENTS>::from_swaps(swaps.into_iter())
         })
     }
 
@@ -148,7 +152,7 @@ mod tests {
         let context = SolveContext::<I, ELEMENTS>::new(moves);
         let mut max = 0;
         for perm in Permutation::<I, ELEMENTS>::all() {
-            let solution = context.solve(perm.clone()).unwrap();
+            let solution = context.solve(perm).unwrap();
             let len = solution.len();
             max = len.max(max);
             // println!(
@@ -157,7 +161,7 @@ mod tests {
             // )
         }
 
-        println!("Longest solution: {max} elements")
+        println!("Longest solution: {max} elements");
     }
 
     #[test]
@@ -178,7 +182,6 @@ mod tests {
     }
 
     pub fn count_generated_solutions<I: Inner, const ELEMENTS: usize>() {
-
         let moves = vec![
             Permutation::<I, ELEMENTS>::reverse(),
             Permutation::<I, ELEMENTS>::rotate_left(),
@@ -187,14 +190,17 @@ mod tests {
         ];
 
         let context = SolveContext::<I, ELEMENTS>::new(moves);
-        println!("{:08?} solvable of {:08?}", context.number_solvable, I::get_factorial(ELEMENTS));
+        println!(
+            "{:08?} solvable of {:08?}",
+            context.number_solvable,
+            I::get_factorial(ELEMENTS)
+        );
     }
 
     #[test]
     pub fn count_generated5() {
         count_generated_solutions::<u8, 5>();
     }
-
 
     // #[test]
     // pub fn test_solve9() {
