@@ -47,12 +47,12 @@
 // errors
 
 mod cyclic_generator;
+mod decomposer;
 /// Inner types that Permutations can use
 pub mod inner;
 mod swaps_iterator;
-mod decomposer;
 
-#[cfg(any(test, feature = "std") )]
+#[cfg(any(test, feature = "std"))]
 /// Allows you to solve permutations - finding the shortest sequence of permutations that lead to it
 pub mod solver;
 
@@ -67,6 +67,7 @@ use serde::{Deserialize, Serialize};
 
 /// A permutation of a fixed length array
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[must_use]
 #[cfg_attr(any(test, feature = "serde"), derive(Serialize), serde(transparent))]
 pub struct Permutation<I: Inner, const ELEMENTS: usize>(I);
 
@@ -129,18 +130,16 @@ impl<I: Inner, const ELEMENTS: usize> Default for Permutation<I, ELEMENTS> {
 
 impl<I: Inner, const ELEMENTS: usize> Display for Permutation<I, ELEMENTS> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        if ELEMENTS < 10{
+        if ELEMENTS < 10 {
             write!(f, "{:01?}", self.get_array())
-        }
-        else{
+        } else {
             write!(f, "{:02?}", self.get_array())
         }
-
     }
 }
 
 impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
-    #[must_use]
+
     /// The inner value of this permutation
     pub fn inner(&self) -> I {
         self.0
@@ -170,7 +169,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         self.0.is_zero()
     }
 
-    #[must_use]
+
     fn swaps(&self) -> SwapsIterator<I> {
         SwapsIterator::new(self)
     }
@@ -483,7 +482,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         Self::from_swaps(swaps.into_iter())
     }
 
-    #[must_use]
+
     /// Gets the rotate left permutation for this number of elements.
     /// ```
     /// use importunate::Permutation;
@@ -495,12 +494,32 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         Self::from_swaps(swaps.into_iter())
     }
 
-    /// Gets the permutation corresponding to a pile shuffle with a given number of piles (must be at least one)
+    /// Rotate right n times
     /// ```
     /// use importunate::Permutation;
-    /// assert_eq!(Permutation::<u64, 13>::pile_shuffle(3).get_array(), [0, 3, 6, 9, 12, 1, 4, 7, 10, 2, 5, 8, 11]);
+    /// assert_eq!(Permutation::<u8, 5>::rotate_n(2).get_array(), [3,4,0,1,2]);
     /// ```
-    pub fn pile_shuffle(piles: u8) -> Self {
+    pub fn rotate_n(n: usize) -> Self{
+        let rhs = Self::rotate_right();
+        let mut p = Self::default();
+        for _ in 0..n{
+            p = p.combine(&rhs)
+        }
+        p
+    }
+
+    /// Gets the permutation corresponding to interleaving elements.
+    /// This is the inverse of the pile shuffle
+    /// ```
+    /// use importunate::Permutation;
+    /// assert_eq!(Permutation::<u64, 13>::interleave(3).get_array(), [0, 5, 10, 1, 6, 11, 2, 7, 12, 3, 8, 4, 9]);
+    /// ```
+    pub fn interleave(groups: u8) -> Self {
+        debug_assert!(groups >= 1);
+        let (div, rem) = (ELEMENTS as u8).div_rem(&groups);
+        let group_size = if rem == 0 { div } else { div + 1 };
+
+        let piles = group_size;
         debug_assert!(piles >= 1);
         let mut arr = [0u8; ELEMENTS];
         let mut current = 0;
@@ -515,19 +534,6 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         }
 
         Self::calculate_unchecked(arr, |&x| x)
-    }
-
-    /// Gets the permutation corresponding to interleaving elements.
-    /// This is the inverse of the pile shuffle
-    /// ```
-    /// use importunate::Permutation;
-    /// assert_eq!(Permutation::<u64, 13>::interleave(3).get_array(), [0, 5, 10, 1, 6, 11, 2, 7, 12, 3, 8, 4, 9]);
-    /// ```
-    pub fn interleave(groups: u8) -> Self {
-        debug_assert!(groups >= 1);
-        let (div, rem) = (ELEMENTS as u8).div_rem(&groups);
-        let group_size = if rem == 0 { div } else { div + 1 };
-        Self::pile_shuffle(group_size)
     }
 
     /// Find which of the options simplifies this permutation the most
@@ -569,7 +575,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     }
 
     /// Decompose this permutation into disjoint cycles
-    pub fn decompose(self)-> impl Iterator<Item = Self>{
+    pub fn decompose(self) -> impl Iterator<Item = Self> {
         decomposer::Decomposer::from(self)
     }
 
@@ -611,21 +617,28 @@ mod tests {
     use std::collections::HashSet;
 
     #[test]
-    pub fn test_decompose(){
+    pub fn test_decompose() {
         type Perm = Permutation<u16, 6>;
-        for perm in Perm::all(){
+        for perm in Perm::all() {
             let decomposed = perm.decompose().collect_vec();
 
-            let product_left = decomposed.iter().fold(Perm::default(), |x,b| x.combine(b) );
-            let product_right = decomposed.iter().fold(Perm::default(), |x,b| b.combine(&x) );
+            let product_left = decomposed.iter().fold(Perm::default(), |x, b| x.combine(b));
+            let product_right = decomposed
+                .iter()
+                .fold(Perm::default(), |x, b| b.combine(&x));
 
-            println!("{:?}: {:?}",perm.get_array(), decomposed.iter().map(|x|format!("({:?})", x.get_array())) .join(""));
+            println!(
+                "{:?}: {:?}",
+                perm.get_array(),
+                decomposed
+                    .iter()
+                    .map(|x| format!("({:?})", x.get_array()))
+                    .join("")
+            );
             assert_eq!(perm, product_left);
             assert_eq!(perm, product_right);
         }
     }
-
-
 
     #[test]
     pub fn test_cycle() {
