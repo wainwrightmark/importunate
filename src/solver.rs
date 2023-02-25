@@ -1,0 +1,186 @@
+use crate::{inner::Inner, Permutation};
+
+/// Can be used to solve a permutation, finding the the shortest combination of a fixed set of permutations that leads to it
+
+pub struct SolveContext<I: Inner, const ELEMENTS: usize> {
+    /// Every index contains four pairs of bits
+    /// Each permutation is associated with a pair
+    /// Permutation p is associated with pair (p % 4) at index (p / 4)
+    /// The meanings of the pairs
+    /// 00: p is 0 mod 3 steps from solved
+    /// 01: p is 1 mod 3 steps from solved
+    /// 10: p is 2 mod 3 steps from solved
+    /// 11: p cannot be solved with this set of moves
+    vec: Vec<u8>,
+
+    moves: Vec<Permutation<I, ELEMENTS>>,
+    inverses: Vec<Permutation<I, ELEMENTS>>,
+}
+
+impl<I: Inner, const ELEMENTS: usize> SolveContext<I, ELEMENTS> {
+    /// Find the shortest list of allowed permutations that leads to this permutation
+    pub fn solve(
+        &self,
+        mut perm: Permutation<I, ELEMENTS>,
+    ) -> Option<Vec<Permutation<I, ELEMENTS>>> {
+        let mut result = vec![];
+        let mut moves_mod_3 = self.get_bits(perm);
+        if moves_mod_3 == 3 {
+            return None;
+        }
+
+        'outer: while !perm.is_default() {
+            let next = (moves_mod_3 + 2) % 3;
+
+            for (m, inverse) in self.moves.iter().zip(self.inverses.iter()) {
+                let combined = perm.combine(inverse);
+                let mm3 = self.get_bits(combined);
+                if mm3 == next {
+                    perm = combined;
+                    result.push(*m);
+                    moves_mod_3 = next;
+                    continue 'outer;
+                }
+            }
+
+            unreachable!()
+        }
+        result.reverse();
+
+        return Some(result);
+    }
+
+    fn get_bits(&self, perm: Permutation<I, ELEMENTS>) -> u8 {
+        let us: usize;
+        unsafe {
+            us = perm.0.try_into().unwrap_unchecked();
+        }
+        let index = us / 4usize;
+
+        let shift = (us % 4) * 2;
+        3u8 & (self.vec[index] >> shift)
+    }
+
+    /// Create a new solver from a fixed set of moves
+    pub fn new(moves: Vec<Permutation<I, ELEMENTS>>) -> Self {
+        let Ok(total) = I::get_factorial(ELEMENTS).try_into() else{
+            panic!("Cannot solve for {ELEMENTS} elements!");
+        };
+
+        let mut vec = vec![u8::MAX; total];
+
+        let mut found = 1;
+        let current = &mut vec![Permutation::<I, ELEMENTS>::default()];
+        let next: &mut Vec<Permutation<I, ELEMENTS>> = &mut vec![];
+
+        let mut moves_mod_3 = 0;
+        while !current.is_empty() && found <= total {
+            for perm in current.drain(..) {
+                let us: usize;
+                unsafe {
+                    us = perm.0.try_into().unwrap_unchecked();
+                }
+
+                let index = us / 4usize;
+                let shift = (us % 4) * 2;
+
+                let all_bits = vec[index];
+                let unset = (0b11 & (vec[index] >> shift)) == 0b11;
+                if unset {
+                    found += 1;
+                    let new_bits = all_bits & !(((!moves_mod_3) & 0b11) << shift);
+
+                    vec[index] = new_bits;
+                    //println!("Perm {perm:03?} set {index:03} shifted {shift:01} to {moves_mod_3:02b} -> {new_bits:08b}" );
+
+                    for m in moves.iter() {
+                        let next_perm = perm.combine(m);
+                        next.push(next_perm);
+                    }
+                }
+            }
+
+            std::mem::swap(current, next);
+            moves_mod_3 += 1;
+            moves_mod_3 %= 3;
+        }
+
+        let inverses = moves.iter().map(|x| x.invert()).collect();
+
+        Self {
+            vec,
+            moves,
+            inverses,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use itertools::Itertools;
+
+    use super::SolveContext;
+    use crate::*;
+
+    fn head_swaps<I: Inner, const ELEMENTS: usize>(
+    ) -> impl Iterator<Item = Permutation<I, ELEMENTS>> {
+        (1..=ELEMENTS).map(|i| {
+            let mut swaps = [0u8; ELEMENTS];
+            swaps[0] = i as u8;
+            let perm = Permutation::<I, ELEMENTS>::from_swaps(swaps.into_iter());
+            perm
+        })
+    }
+
+    fn test_solve<I: Inner, const ELEMENTS: usize>() {
+        let moves = head_swaps().collect_vec();
+
+        let context = SolveContext::<I, ELEMENTS>::new(moves);
+        let mut max = 0;
+        for perm in Permutation::<I, ELEMENTS>::all() {
+            let solution = context.solve(perm.clone()).unwrap();
+            let len = solution.len();
+            max = len.max(max);
+            // println!(
+            //     "{perm} solved in {len} steps with {}",
+            //     solution.iter().join(", ")
+            // )
+        }
+
+        println!("Longest solution: {max} elements")
+    }
+
+    #[test]
+    pub fn test_solve5() {
+        test_solve::<u8, 5>();
+    }
+    #[test]
+    pub fn test_solve6() {
+        test_solve::<u16, 6>();
+    }
+    #[test]
+    pub fn test_solve7() {
+        test_solve::<u16, 7>();
+    }
+    #[test]
+    pub fn test_solve8() {
+        test_solve::<u16, 8>();
+    }
+
+    #[test]
+    pub fn test_solve9() {
+        test_solve::<u32, 9>();
+    }
+    // #[test]
+    // pub fn test_solve10() {
+    //     test_solve::<u32, 10>();
+    // }
+    // #[test]
+    // pub fn test_solve11() {
+    //     test_solve::<u32,11>();
+    // }
+    // #[test]
+    // pub fn test_solve12() {
+    //     test_solve::<u32, 12>();
+    // }
+}

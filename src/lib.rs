@@ -52,6 +52,11 @@ pub mod inner;
 mod swaps_iterator;
 mod decomposer;
 
+#[cfg(any(test, feature = "std") )]
+/// Allows you to solve permutations - finding the shortest sequence of permutations that lead to it
+pub mod solver;
+
+use core::fmt::Display;
 use core::hash::Hash;
 use core::{cmp::Ordering, fmt::Debug};
 
@@ -119,6 +124,18 @@ impl<I: Inner, const ELEMENTS: usize> Default for Permutation<I, ELEMENTS> {
     fn default() -> Self {
         debug_assert!(ELEMENTS <= I::MAX_ELEMENTS);
         Self(Default::default())
+    }
+}
+
+impl<I: Inner, const ELEMENTS: usize> Display for Permutation<I, ELEMENTS> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        if ELEMENTS < 10{
+            write!(f, "{:01?}", self.get_array())
+        }
+        else{
+            write!(f, "{:02?}", self.get_array())
+        }
+
     }
 }
 
