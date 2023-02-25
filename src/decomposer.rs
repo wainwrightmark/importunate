@@ -4,6 +4,7 @@ use crate::{inner::Inner, Permutation};
 
 /// Decomposes permutations into disjoint cycles.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[must_use]
 pub struct Decomposer<I: Inner, const ELEMENTS: usize>{
     array: [u8;ELEMENTS],
     index: u8,

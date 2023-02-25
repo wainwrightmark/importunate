@@ -60,6 +60,16 @@ impl<I: Inner, const ELEMENTS: usize> SolveContext<I, ELEMENTS> {
         3u8 & (self.vec[index] >> shift)
     }
 
+    fn combine_arrays(lhs: &[u8; ELEMENTS], rhs_swaps: &[u8; ELEMENTS])-> [u8; ELEMENTS]{
+        let mut result = lhs.clone();
+
+        for (index, &swap) in rhs_swaps.iter().enumerate(){
+            result.swap(index, index + usize::from(swap))
+
+        }
+        result
+    }
+
     /// Create a new solver from a fixed set of moves
     pub fn new(moves: Vec<Permutation<I, ELEMENTS>>) -> Self {
         let Ok(total) = I::get_factorial(ELEMENTS).try_into() else{
@@ -69,15 +79,19 @@ impl<I: Inner, const ELEMENTS: usize> SolveContext<I, ELEMENTS> {
         let mut vec = vec![u8::MAX; total];
 
         let mut number_solvable = 1;
-        let current = &mut vec![Permutation::<I, ELEMENTS>::default()];
-        let next: &mut Vec<Permutation<I, ELEMENTS>> = &mut vec![];
+        let current: &mut Vec<[u8; ELEMENTS]> = &mut vec![Permutation::<I, ELEMENTS>::default().get_array()];
+        let next: &mut Vec<[u8; ELEMENTS]> = &mut vec![];
+
+        let move_swaps: Vec<_> = moves.iter().map(|x|x.swaps_array()).collect();
 
         let mut moves_mod_3 = 0;
         while !current.is_empty() && number_solvable <= total {
-            for perm in current.drain(..) {
+            for perm_arr in current.drain(..) {
                 let us: usize;
+                let perm1 = Permutation::<I, ELEMENTS>::calculate_unchecked(perm_arr, |x|*x);
 
-                us = perm.0.try_into().unwrap_or_else(|_|unreachable!());
+
+                us = perm1.0.try_into().unwrap_or_else(|_|unreachable!());
 
                 let index = us / 4usize;
                 let shift = (us % 4) * 2;
@@ -91,8 +105,8 @@ impl<I: Inner, const ELEMENTS: usize> SolveContext<I, ELEMENTS> {
                     vec[index] = new_bits;
                     //println!("Perm {perm:03?} set {index:03} shifted {shift:01} to {moves_mod_3:02b} -> {new_bits:08b}" );
 
-                    for m in moves.iter() {
-                        let next_perm = perm.combine(m);
+                    for swaps in move_swaps.iter() {
+                        let next_perm = Self::combine_arrays(&perm_arr, swaps);
                         next.push(next_perm);
                     }
                 }
@@ -163,10 +177,29 @@ mod tests {
         test_solve::<u16, 8>();
     }
 
-    #[test]
-    pub fn test_solve9() {
-        test_solve::<u32, 9>();
+    pub fn count_generated_solutions<I: Inner, const ELEMENTS: usize>() {
+
+        let moves = vec![
+            Permutation::<I, ELEMENTS>::reverse(),
+            Permutation::<I, ELEMENTS>::rotate_left(),
+            Permutation::<I, ELEMENTS>::rotate_right(),
+            Permutation::<I, ELEMENTS>::interleave(2),
+        ];
+
+        let context = SolveContext::<I, ELEMENTS>::new(moves);
+        println!("{:08?} solvable of {:08?}", context.number_solvable, I::get_factorial(ELEMENTS));
     }
+
+    #[test]
+    pub fn count_generated5() {
+        count_generated_solutions::<u8, 5>();
+    }
+
+
+    // #[test]
+    // pub fn test_solve9() {
+    //     test_solve::<u32, 9>();
+    // }
     // #[test]
     // pub fn test_solve10() {
     //     test_solve::<u32, 10>();

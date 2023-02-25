@@ -1,5 +1,6 @@
 use crate::{inner::Inner, Permutation};
 
+#[must_use]
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct SwapsIterator<I: Inner> {
     inner: I,
