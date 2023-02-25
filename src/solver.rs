@@ -13,12 +13,14 @@ pub struct SolveContext<I: Inner, const ELEMENTS: usize> {
     /// 11: p cannot be solved with this set of moves
     vec: Vec<u8>,
 
+    /// The total number of solvable permutations
+    pub number_solvable: I,
+
     moves: Vec<Permutation<I, ELEMENTS>>,
-    inverses: Vec<Permutation<I, ELEMENTS>>,
 }
 
 impl<I: Inner, const ELEMENTS: usize> SolveContext<I, ELEMENTS> {
-    /// Find the shortest list of allowed permutations that leads to this permutation
+    /// Try to Deconstruct the inverse of this permutation into the shortest sequence of permutations from the allowed list
     pub fn solve(
         &self,
         mut perm: Permutation<I, ELEMENTS>,
@@ -32,8 +34,8 @@ impl<I: Inner, const ELEMENTS: usize> SolveContext<I, ELEMENTS> {
         'outer: while !perm.is_default() {
             let next = (moves_mod_3 + 2) % 3;
 
-            for (m, inverse) in self.moves.iter().zip(self.inverses.iter()) {
-                let combined = perm.combine(inverse);
+            for m in self.moves.iter() {
+                let combined = perm.combine(m);
                 let mm3 = self.get_bits(combined);
                 if mm3 == next {
                     perm = combined;
@@ -51,10 +53,7 @@ impl<I: Inner, const ELEMENTS: usize> SolveContext<I, ELEMENTS> {
     }
 
     fn get_bits(&self, perm: Permutation<I, ELEMENTS>) -> u8 {
-        let us: usize;
-        unsafe {
-            us = perm.0.try_into().unwrap_unchecked();
-        }
+        let us: usize = perm.0.try_into().unwrap_or_else(|_|unreachable!());
         let index = us / 4usize;
 
         let shift = (us % 4) * 2;
@@ -69,17 +68,16 @@ impl<I: Inner, const ELEMENTS: usize> SolveContext<I, ELEMENTS> {
 
         let mut vec = vec![u8::MAX; total];
 
-        let mut found = 1;
+        let mut number_solvable = 1;
         let current = &mut vec![Permutation::<I, ELEMENTS>::default()];
         let next: &mut Vec<Permutation<I, ELEMENTS>> = &mut vec![];
 
         let mut moves_mod_3 = 0;
-        while !current.is_empty() && found <= total {
+        while !current.is_empty() && number_solvable <= total {
             for perm in current.drain(..) {
                 let us: usize;
-                unsafe {
-                    us = perm.0.try_into().unwrap_unchecked();
-                }
+
+                us = perm.0.try_into().unwrap_or_else(|_|unreachable!());
 
                 let index = us / 4usize;
                 let shift = (us % 4) * 2;
@@ -87,7 +85,7 @@ impl<I: Inner, const ELEMENTS: usize> SolveContext<I, ELEMENTS> {
                 let all_bits = vec[index];
                 let unset = (0b11 & (vec[index] >> shift)) == 0b11;
                 if unset {
-                    found += 1;
+                    number_solvable += 1;
                     let new_bits = all_bits & !(((!moves_mod_3) & 0b11) << shift);
 
                     vec[index] = new_bits;
@@ -105,12 +103,10 @@ impl<I: Inner, const ELEMENTS: usize> SolveContext<I, ELEMENTS> {
             moves_mod_3 %= 3;
         }
 
-        let inverses = moves.iter().map(|x| x.invert()).collect();
-
         Self {
             vec,
             moves,
-            inverses,
+            number_solvable:  number_solvable.try_into().unwrap_or_else(|_|unreachable!())
         }
     }
 }
