@@ -47,7 +47,6 @@ impl<I: Inner, const ELEMENTS: usize> SolveContext<I, ELEMENTS> {
 
             unreachable!()
         }
-        result.reverse();
 
         Some(result)
     }
@@ -69,19 +68,25 @@ impl<I: Inner, const ELEMENTS: usize> SolveContext<I, ELEMENTS> {
         result
     }
 
-    /// Create a new solver from a fixed set of moves
+    /// Create a new solver from a fixed set of moves. This will also use the inverses of those moves
     /// # Panics
     ///
     /// This will panic if the number of possible solutions is greater than `usize::MAX`
     #[must_use]
-    pub fn new(moves: Vec<Permutation<I, ELEMENTS>>) -> Self {
+    pub fn new(mut moves: Vec<Permutation<I, ELEMENTS>>) -> Self {
         let Ok(total) = I::get_factorial(ELEMENTS).try_into() else{
             panic!("Cannot solve for {ELEMENTS} elements!");
         };
 
+        for m in moves.clone().iter(){
+            moves.push(m.invert());
+        }
+        moves.sort();
+        moves.dedup();
+
         let mut vec = vec![u8::MAX; total];
 
-        let mut number_solvable = 1;
+        let mut number_solvable = 0;
         let current: &mut Vec<[u8; ELEMENTS]> =
             &mut vec![Permutation::<I, ELEMENTS>::default().get_array()];
         let next: &mut Vec<[u8; ELEMENTS]> = &mut vec![];
@@ -150,18 +155,7 @@ mod tests {
         let moves = head_swaps().collect_vec();
 
         let context = SolveContext::<I, ELEMENTS>::new(moves);
-        let mut max = 0;
-        for perm in Permutation::<I, ELEMENTS>::all() {
-            let solution = context.solve(perm).unwrap();
-            let len = solution.len();
-            max = len.max(max);
-            // println!(
-            //     "{perm} solved in {len} steps with {}",
-            //     solution.iter().join(", ")
-            // )
-        }
-
-        println!("Longest solution: {max} elements");
+        check_solutions(&context);
     }
 
     #[test]
@@ -182,24 +176,90 @@ mod tests {
     }
 
     pub fn count_generated_solutions<I: Inner, const ELEMENTS: usize>() {
-        let moves = vec![
+        let mut moves = vec![
             Permutation::<I, ELEMENTS>::reverse(),
             Permutation::<I, ELEMENTS>::rotate_left(),
             Permutation::<I, ELEMENTS>::rotate_right(),
-            Permutation::<I, ELEMENTS>::interleave(2),
-        ];
+            ];
+        for n in 1..=ELEMENTS {
+            // moves.push(Permutation::<I, ELEMENTS>::rotate_n(n));
+            moves.push(Permutation::<I, ELEMENTS>::interleave(n as u8));
+        }
+        let moves_len = moves.len();
+
+        moves.sort();
+        moves.dedup();
 
         let context = SolveContext::<I, ELEMENTS>::new(moves);
+        let claimed_solvable = context
+            .number_solvable
+            .try_into()
+            .unwrap_or_else(|_| panic!(""));
+        let count_using_bits = count_solvable_bits(&context);
+        assert_eq!(count_using_bits, claimed_solvable);
         println!(
-            "{:08?} solvable of {:08?}",
+            "{:08?} solvable of {:08?} with {moves_len} moves",
             context.number_solvable,
-            I::get_factorial(ELEMENTS)
+            I::get_factorial(ELEMENTS),
         );
+
+        let total = check_solutions(&context);
+        assert_eq!(total, claimed_solvable)
     }
 
     #[test]
     pub fn count_generated5() {
         count_generated_solutions::<u8, 5>();
+    }
+    #[test]
+    pub fn count_generated6() {
+        count_generated_solutions::<u16, 6>();
+    }
+    #[test]
+    pub fn count_generated7() {
+        count_generated_solutions::<u16, 7>();
+    }
+    #[test]
+    pub fn count_generated8() {
+        count_generated_solutions::<u16, 8>();
+    }
+
+    fn check_solutions<I: Inner, const ELEMENTS: usize>(
+        context: &SolveContext<I, ELEMENTS>,
+    ) -> usize {
+        let mut count = 0;
+        for perm in Permutation::<I, ELEMENTS>::all() {
+            if let Some(solution) = context.solve(perm) {
+
+
+                let mut p1 = perm.clone();
+                for x in solution.iter() {
+                    p1 = p1.combine(&x);
+                }
+                //let len = solution.len();
+                // println!(
+                //     "{perm} solved in {len} steps with {}",
+                //     solution.iter().join(", ")
+                // );
+                assert_eq!(Permutation::<I, ELEMENTS>::default(), p1);
+                count += 1;
+            }
+        }
+        count
+    }
+
+    fn count_solvable_bits<I: Inner, const ELEMENTS: usize>(
+        context: &SolveContext<I, ELEMENTS>,
+    ) -> usize {
+        let mut count = 0;
+        for bits in context.vec.iter() {
+            for shift in [0, 2, 4, 6] {
+                if bits >> shift & 0b11 != 0b11 {
+                    count += 1;
+                }
+            }
+        }
+        count
     }
 
     // #[test]
