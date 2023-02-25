@@ -547,46 +547,13 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     }
 
     /// Generate the cycle with this permutation as the operator
-    fn generate_cycle(self) -> impl Iterator<Item = Self> {
+    pub fn generate_cycle(self) -> impl Iterator<Item = Self> {
         cyclic_generator::CyclicGenerator::from(self)
     }
 
-    fn decompose(self)-> impl Iterator<Item = Self>{
+    /// Decompose this permutation into disjoint cycles
+    pub fn decompose(self)-> impl Iterator<Item = Self>{
         decomposer::Decomposer::from(self)
-    }
-
-    #[cfg(any(test, feature = "std"))]
-    fn primitives() -> Vec<Self> {
-        let mut primitives: Vec<Self> = vec![];
-        let mut generated: std::collections::BTreeSet<Self> = Default::default();
-        generated.insert(Self::default());
-
-        let mut ordered: Vec<_> = Self::all().rev().collect();
-        ordered.sort_by_cached_key(|x| x.generate_cycle().count());
-        ordered.reverse();
-
-        for perm in ordered {
-            if !generated.contains(&perm) {
-                primitives.push(perm);
-
-                let mut temp = vec![];
-                //println!("-----");
-                for p in perm.generate_cycle() {
-                    // println!(
-                    //     "{p:?} {} {:?} {:?}",
-                    //     p.generate_cycle().count(),
-                    //     p.swaps_array(),
-                    //     p.get_array()
-                    // );
-                    for g in generated.iter() {
-                        let combined = g.combine(&p);
-                        temp.push(combined);
-                    }
-                }
-                generated.extend(temp);
-            }
-        }
-        primitives
     }
 
     //The slow (but oh so elegant) version of combine
@@ -641,64 +608,7 @@ mod tests {
         }
     }
 
-    #[test]
-    pub fn generate_primitives6() {
-        type Perm = Permutation<u16, 6>;
-        let primitives = Perm::primitives();
 
-        for perm in primitives.iter() {
-            println!(
-                "{perm:?} {} {:?} {:?}",
-                perm.generate_cycle().count(),
-                perm.swaps_array(),
-                perm.get_array()
-            );
-        }
-
-        assert_eq!(
-            vec![40, 41, 49, 50, 56, 69, 130, 251],
-            primitives.into_iter().map(|x| x.0).collect_vec()
-        );
-    }
-    #[test]
-    pub fn generate_primitives5() {
-        type Perm = Permutation<u8, 5>;
-        let primitives = Perm::primitives();
-
-        for perm in primitives.iter() {
-            println!(
-                "{perm:?} {} {:?} {:?}",
-                perm.generate_cycle().count(),
-                perm.swaps_array(),
-                perm.get_array()
-            );
-        }
-
-        assert_eq!(
-            vec![29, 36, 37, 48, 69],
-            primitives.into_iter().map(|x| x.0).collect_vec()
-        );
-    }
-
-    #[test]
-    pub fn generate_primitives4() {
-        type Perm = Permutation<u8, 4>;
-        let primitives = Perm::primitives();
-
-        for perm in primitives.iter() {
-            println!(
-                "{perm:?} {} {:?} {:?}",
-                perm.generate_cycle().count(),
-                perm.swaps_array(),
-                perm.get_array()
-            );
-        }
-
-        assert_eq!(
-            vec![17, 18, 19],
-            primitives.into_iter().map(|x| x.0).collect_vec()
-        );
-    }
 
     #[test]
     pub fn test_cycle() {
@@ -920,25 +830,5 @@ mod tests {
         let perm = Permutation::<u8, 4>::calculate_incomplete(&[2, 0, 1, 3]);
 
         assert_tokens(&perm, &[Token::U8(6)])
-    }
-
-    #[test]
-    fn test_simplify() {
-        type Perm = Permutation<u16, 8>;
-        let mut current = Perm::from(12345);
-        let primitives = Perm::primitives();
-        println!("Found {} primitives", primitives.len());
-        loop {
-            println!("{current:?} {:?}", current.swaps_array());
-
-            if let Some(simplification) = current.find_simplification(&primitives) {
-                println!("Apply {simplification:?}");
-                current = current.combine(&simplification);
-            } else if current.0 == 0 {
-                println!("Fully simlpified");
-            } else {
-                panic!("Not fully simplified");
-            }
-        }
     }
 }
