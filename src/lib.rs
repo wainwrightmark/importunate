@@ -89,10 +89,10 @@ impl<'de, I: Inner + Deserialize<'de>, const ELEMENTS: usize> Deserialize<'de>
     }
 }
 
-#[cfg(feature = "arbitrary")]
+#[cfg(any(test, feature = "arbitrary"))]
 use arbitrary::Arbitrary;
 use swaps_iterator::SwapsIterator;
-#[cfg(feature = "arbitrary")]
+#[cfg(any(test, feature = "arbitrary"))]
 impl<'a, I: Inner, const ELEMENTS: usize> Arbitrary<'a> for Permutation<I, ELEMENTS> {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
         debug_assert!(ELEMENTS <= I::MAX_ELEMENTS);
@@ -139,7 +139,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
 
     /// Create the permuation associated with a particular number, if it is in range.
     pub fn try_from_inner(i: &I) -> Option<Self> {
-        if *i<= I::get_factorial(ELEMENTS) {
+        if *i <= I::get_factorial(ELEMENTS) {
             Some(Self(*i))
         } else {
             None
@@ -564,7 +564,9 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
 #[cfg(test)]
 mod tests {
     use crate::Permutation;
-    use anyhow::Ok;
+    use arbitrary::*;
+    use arbtest::arbitrary::{self, Unstructured};
+
     use itertools::Itertools;
     use ntest::test_case;
     use std::collections::HashSet;
@@ -664,40 +666,56 @@ mod tests {
         assert_eq!(anagr, anag); //extra characters are ignored
     }
 
+
+
+
     #[test]
     pub fn test_bytes() {
-        for perm in Permutation::<u32, 10>::all() {
+        fn test_bytes1(u: &mut Unstructured<'_>) -> Result<(), arbitrary::Error> {
+            let perm = u.arbitrary::<Permutation<u32, 10>>()?;
             let bytes: [u8; 3] = perm.to_le_byte_array();
 
             let perm2 = Permutation::<u32, 10>::try_from_le_byte_array(&bytes).unwrap();
             assert_eq!(perm, perm2);
+            Ok(())
         }
+        arbtest::builder().run(|u| test_bytes1(u))
     }
 
     #[test]
     pub fn test_inner() {
-        type Perm = Permutation::<u8, 4>;
-        for perm in Perm::all() {
+        fn test_inner1(u: &mut Unstructured<'_>) -> Result<(), arbitrary::Error> {
+            let perm = u.arbitrary::<Permutation<u8, 4>>()?;
+
             assert_eq!(perm.0, perm.inner());
             assert_eq!(perm.0 == 0, perm.is_default());
 
-            assert_eq!(perm, Perm::try_from_inner(&perm.0).unwrap());
+            assert_eq!(perm, Permutation::<u8, 4>::try_from_inner(&perm.0).unwrap());
+
+            Ok(())
         }
+
+        arbtest::builder().run(|u| test_inner1(u))
     }
 
     #[test]
     pub fn test_swaps() {
-        for permutation in Permutation::<u8, 4>::all() {
-            let swaps = permutation.swaps_array();
+        fn test_swaps1(u: &mut Unstructured<'_>) -> Result<(), arbitrary::Error>{
+            let perm = u.arbitrary::<Permutation<u8, 4>>()?;
+            let swaps = perm.swaps_array();
             assert_eq!(
                 swaps.into_iter().collect_vec(),
-                permutation.swaps().pad_using(4, |_| 0).collect_vec()
+                perm.swaps().pad_using(4, |_| 0).collect_vec()
             );
 
             let ordering2 = Permutation::<u8, 4>::from_swaps(swaps.into_iter());
 
-            assert_eq!(permutation, ordering2);
+            assert_eq!(perm, ordering2);
+
+            Ok(())
         }
+
+        arbtest::builder().run(|u| test_swaps1(u))
     }
 
     #[test]

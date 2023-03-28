@@ -28,7 +28,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-arbitrary = {version="1.2.3", optional=true}
+arbitrary = {version="1.3", optional=true}
 num-integer = { version = "0.1", default-features = false }
 serde = {version = "1.0", features=["derive"], optional = true}
 
@@ -45,6 +45,8 @@ ntest= "0.9"
 itertools="0.10"
 serde_test="1"
 serde = {version = "1.0", features=["derive"]}
+arbitrary = {version="1.3"}
+arbtest = "0.2.0"
 
 [[bench]]
 name = "my_benchmark"
