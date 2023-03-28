@@ -625,6 +625,13 @@ mod tests {
     }
 
     #[test]
+    pub fn test_display(){
+        let perm = Permutation::<u8, 5>::rotate_right();
+
+        assert_eq!(perm.to_string(), "[4, 0, 1, 2, 3]")
+    }
+
+    #[test]
     pub fn test_cycle() {
         let perm = Permutation::<u8, 5>::rotate_right();
         let generator = perm.generate_cycle();
@@ -689,9 +696,19 @@ mod tests {
     }
 
     #[test]
+    pub fn test_inner() {
+        for perm in Permutation::<u8, 4>::all() {
+            assert_eq!(perm.0, perm.inner());
+            assert_eq!(perm.0 == 0, perm.is_default());
+        }
+    }
+
+    #[test]
     pub fn test_swaps() {
         for permutation in Permutation::<u8, 4>::all() {
             let swaps = permutation.swaps_array();
+            assert_eq!(swaps.into_iter().collect_vec(), permutation.swaps().pad_using(4,|_| 0) .collect_vec());
+
             let ordering2 = Permutation::<u8, 4>::from_swaps(swaps.into_iter());
 
             assert_eq!(permutation, ordering2);
@@ -703,13 +720,6 @@ mod tests {
         for permutation in Permutation::<u8, 4>::all() {
             let arr = permutation.get_array();
             let inverse = permutation.invert();
-
-            // println!(
-            //     "{}:  {:?} {:?}",
-            //     permutation.0,
-            //     permutation.swaps_array(),
-            //     inverse.swaps_array()
-            // );
 
             let mut arr2 = arr;
             inverse.apply(&mut arr2);
@@ -794,6 +804,12 @@ mod tests {
 
             assert_eq!(perm, calculated);
         }
+    }
+
+    #[test]
+    pub fn test_calculate_changed(){
+        let r = Permutation::<u8, 4>::try_calculate([0,1,2,2], |x| *x);
+        assert_eq!(r, None)
     }
 
     #[test_case(0, "0123")]

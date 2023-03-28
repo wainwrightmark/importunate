@@ -1,0 +1,5 @@
+[all_features]
+all-features = true
+
+[report]
+out = ["Lcov"]

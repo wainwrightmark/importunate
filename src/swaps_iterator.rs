@@ -31,14 +31,12 @@ impl<I: Inner> Iterator for SwapsIterator<I> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.inner.is_zero(){
+            return (0, Some(0));
+        }
         let rem = self.count.into();
-        (rem, Some(rem))
+        (1, Some(rem))
     }
 
-    fn count(self) -> usize
-    where
-        Self: Sized,
-    {
-        self.count.into()
-    }
+
 }

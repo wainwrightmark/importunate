@@ -181,16 +181,23 @@ mod tests {
             Permutation::<I, ELEMENTS>::rotate_left(),
             Permutation::<I, ELEMENTS>::rotate_right(),
             ];
-        for n in 1..=ELEMENTS {
+        for n in 2..ELEMENTS {
             // moves.push(Permutation::<I, ELEMENTS>::rotate_n(n));
             moves.push(Permutation::<I, ELEMENTS>::interleave(n as u8));
         }
-        let moves_len = moves.len();
+
 
         moves.sort();
         moves.dedup();
 
+        for m in moves.iter(){
+            println!("{m}");
+        }
+
         let context = SolveContext::<I, ELEMENTS>::new(moves);
+
+        let moves_len = context.moves.len();
+
         let claimed_solvable = context
             .number_solvable
             .try_into()
@@ -205,6 +212,11 @@ mod tests {
 
         let total = check_solutions(&context);
         assert_eq!(total, claimed_solvable)
+    }
+
+    #[test]
+    pub fn count_generated4() {
+        count_generated_solutions::<u8, 4>();
     }
 
     #[test]
