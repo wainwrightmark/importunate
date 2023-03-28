@@ -646,7 +646,7 @@ mod tests {
         let actual = Permutation::<u8, 5>::calculate_incomplete(&[1, 2, 2, 3, 2]);
         let expected = Permutation::<u8, 5>::calculate_unchecked([0, 1, 2, 4, 3], |x| *x);
 
-        assert_eq!(actual, expected)
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -666,9 +666,6 @@ mod tests {
         assert_eq!(anagr, anag); //extra characters are ignored
     }
 
-
-
-
     #[test]
     pub fn test_bytes() {
         fn test_bytes1(u: &mut Unstructured<'_>) -> Result<(), arbitrary::Error> {
@@ -679,7 +676,7 @@ mod tests {
             assert_eq!(perm, perm2);
             Ok(())
         }
-        arbtest::builder().run(|u| test_bytes1(u))
+        arbtest::builder().run(test_bytes1);
     }
 
     #[test]
@@ -695,12 +692,12 @@ mod tests {
             Ok(())
         }
 
-        arbtest::builder().run(|u| test_inner1(u))
+        arbtest::builder().run(test_inner1);
     }
 
     #[test]
     pub fn test_swaps() {
-        fn test_swaps1(u: &mut Unstructured<'_>) -> Result<(), arbitrary::Error>{
+        fn test_swaps1(u: &mut Unstructured<'_>) -> Result<(), arbitrary::Error> {
             let perm = u.arbitrary::<Permutation<u8, 4>>()?;
             let swaps = perm.swaps_array();
             assert_eq!(
@@ -715,7 +712,7 @@ mod tests {
             Ok(())
         }
 
-        arbtest::builder().run(|u| test_swaps1(u))
+        arbtest::builder().run(test_swaps1);
     }
 
     #[test]
@@ -785,7 +782,7 @@ mod tests {
     }
 
     #[test]
-    pub fn all_possible_orderings_are_unique() -> Result<(), anyhow::Error> {
+    pub fn all_possible_orderings_are_unique() {
         let mut set: HashSet<[u8; 4]> = std::collections::HashSet::default();
 
         for perm in Permutation::<u8, 4>::all() {
@@ -796,8 +793,6 @@ mod tests {
         }
 
         assert_eq!(set.len(), 24);
-
-        Ok(())
     }
 
     #[test]

@@ -78,7 +78,7 @@ impl<I: Inner, const ELEMENTS: usize> SolveContext<I, ELEMENTS> {
             panic!("Cannot solve for {ELEMENTS} elements!");
         };
 
-        for m in moves.clone().iter(){
+        for m in &moves.clone() {
             moves.push(m.invert());
         }
         moves.sort();
@@ -180,17 +180,16 @@ mod tests {
             Permutation::<I, ELEMENTS>::reverse(),
             Permutation::<I, ELEMENTS>::rotate_left(),
             Permutation::<I, ELEMENTS>::rotate_right(),
-            ];
+        ];
         for n in 2..ELEMENTS {
             // moves.push(Permutation::<I, ELEMENTS>::rotate_n(n));
             moves.push(Permutation::<I, ELEMENTS>::interleave(n as u8));
         }
 
-
         moves.sort();
         moves.dedup();
 
-        for m in moves.iter(){
+        for m in &moves {
             println!("{m}");
         }
 
@@ -242,11 +241,9 @@ mod tests {
         let mut count = 0;
         for perm in Permutation::<I, ELEMENTS>::all() {
             if let Some(solution) = context.solve(perm) {
-
-
-                let mut p1 = perm.clone();
-                for x in solution.iter() {
-                    p1 = p1.combine(&x);
+                let mut p1 = perm;
+                for x in &solution {
+                    p1 = p1.combine(x);
                 }
                 //let len = solution.len();
                 // println!(
@@ -264,7 +261,7 @@ mod tests {
         context: &SolveContext<I, ELEMENTS>,
     ) -> usize {
         let mut count = 0;
-        for bits in context.vec.iter() {
+        for bits in &context.vec {
             for shift in [0, 2, 4, 6] {
                 if bits >> shift & 0b11 != 0b11 {
                     count += 1;
