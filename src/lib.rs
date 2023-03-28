@@ -114,13 +114,6 @@ impl<'a, I: Inner, const ELEMENTS: usize> Arbitrary<'a> for Permutation<I, ELEME
     }
 }
 
-impl<I: Inner, const ELEMENTS: usize> From<I> for Permutation<I, ELEMENTS> {
-    fn from(value: I) -> Self {
-        debug_assert!(ELEMENTS <= I::MAX_ELEMENTS);
-        Self(value)
-    }
-}
-
 impl<I: Inner, const ELEMENTS: usize> Default for Permutation<I, ELEMENTS> {
     fn default() -> Self {
         debug_assert!(ELEMENTS <= I::MAX_ELEMENTS);
@@ -130,7 +123,7 @@ impl<I: Inner, const ELEMENTS: usize> Default for Permutation<I, ELEMENTS> {
 
 impl<I: Inner, const ELEMENTS: usize> Display for Permutation<I, ELEMENTS> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        if ELEMENTS < 10 {
+        if ELEMENTS <= 10 {
             write!(f, "{:01?}", self.get_array())
         } else {
             write!(f, "{:02?}", self.get_array())
@@ -142,6 +135,15 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     /// The inner value of this permutation
     pub fn inner(&self) -> I {
         self.0
+    }
+
+    /// Create the permuation associated with a particular number, if it is in range.
+    pub fn try_from_inner(i: &I) -> Option<Self> {
+        if *i<= I::get_factorial(ELEMENTS) {
+            Some(Self(*i))
+        } else {
+            None
+        }
     }
 
     /// Apply this permutation to an array, reordering the first `ELEMENTS` elements
@@ -520,39 +522,6 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         Self::calculate_unchecked(arr, |&x| x)
     }
 
-    /// Find which of the options simplifies this permutation the most
-    pub fn find_simplification(&self, options: &[Self]) -> Option<Self> {
-        let this_swaps = self.swaps_array();
-        let c = this_swaps.iter().filter(|&x| x > &0).count();
-        let total: u8 = this_swaps.iter().sum();
-        if c == 0 {
-            return None;
-        };
-
-        let mut best = (Self(I::zero()), c, total);
-        for rhs in options {
-            //let mut swaps2 = this_swaps.clone();
-            //for (i, diff) in rhs.swaps().enumerate() {
-            let new_perm = self.combine(rhs);
-            //Self::swap_swaps(&mut swaps2[i..], diff);
-            let new_c = new_perm.swaps().filter(|&x| x > 0).count();
-            let new_total = new_perm.swaps().sum();
-            if new_c < best.1 {
-                if new_c == 0 {
-                    return Some(*rhs);
-                }
-                best = (*rhs, new_c, new_total);
-            } else if new_c == best.1 && new_total < best.2 {
-                best = (*rhs, new_c, new_total);
-            }
-        }
-
-        if best.0 .0.is_zero() {
-            return None;
-        }
-        Some(best.0)
-    }
-
     /// Generate the cycle with this permutation as the operator
     pub fn generate_cycle(self) -> impl Iterator<Item = Self> {
         cyclic_generator::CyclicGenerator::from(self)
@@ -600,6 +569,12 @@ mod tests {
     use ntest::test_case;
     use std::collections::HashSet;
 
+    // pub fn test_arbitrary(){
+    //     type Perm = Permutation<u8, 5>;
+
+    //     <Perm as Arbitrary>::arbitrary(u)
+    // }
+
     #[test]
     pub fn test_decompose() {
         type Perm = Permutation<u16, 6>;
@@ -625,10 +600,18 @@ mod tests {
     }
 
     #[test]
-    pub fn test_display(){
-        let perm = Permutation::<u8, 5>::rotate_right();
+    pub fn test_display() {
+        let perm5 = Permutation::<u8, 5>::rotate_right();
+        assert_eq!(perm5.to_string(), "[4, 0, 1, 2, 3]");
 
-        assert_eq!(perm.to_string(), "[4, 0, 1, 2, 3]")
+        let perm10 = Permutation::<u32, 10>::rotate_n(2);
+        assert_eq!(perm10.to_string(), "[8, 9, 0, 1, 2, 3, 4, 5, 6, 7]");
+
+        let perm11 = Permutation::<u32, 11>::rotate_n(3);
+        assert_eq!(
+            perm11.to_string(),
+            "[08, 09, 10, 00, 01, 02, 03, 04, 05, 06, 07]"
+        );
     }
 
     #[test]
@@ -658,14 +641,10 @@ mod tests {
 
     #[test]
     pub fn test_calculate_incomplete() {
-        let anagram = Permutation::<u16, 7>::calculate_incomplete("anagram".as_bytes());
+        let actual = Permutation::<u8, 5>::calculate_incomplete(&[1, 2, 2, 3, 2]);
+        let expected = Permutation::<u8, 5>::calculate_unchecked([0, 1, 2, 4, 3], |x| *x);
 
-        let mut to_change = "anagram".bytes().collect_vec();
-        anagram.invert().apply(to_change.as_mut_slice());
-
-        let converted = String::from_utf8(to_change).unwrap();
-
-        assert_eq!(converted, "aaagmnr");
+        assert_eq!(actual, expected)
     }
 
     #[test]
@@ -697,9 +676,12 @@ mod tests {
 
     #[test]
     pub fn test_inner() {
-        for perm in Permutation::<u8, 4>::all() {
+        type Perm = Permutation::<u8, 4>;
+        for perm in Perm::all() {
             assert_eq!(perm.0, perm.inner());
             assert_eq!(perm.0 == 0, perm.is_default());
+
+            assert_eq!(perm, Perm::try_from_inner(&perm.0).unwrap());
         }
     }
 
@@ -707,7 +689,10 @@ mod tests {
     pub fn test_swaps() {
         for permutation in Permutation::<u8, 4>::all() {
             let swaps = permutation.swaps_array();
-            assert_eq!(swaps.into_iter().collect_vec(), permutation.swaps().pad_using(4,|_| 0) .collect_vec());
+            assert_eq!(
+                swaps.into_iter().collect_vec(),
+                permutation.swaps().pad_using(4, |_| 0).collect_vec()
+            );
 
             let ordering2 = Permutation::<u8, 4>::from_swaps(swaps.into_iter());
 
@@ -741,11 +726,12 @@ mod tests {
 
     #[test]
     pub fn test_element_at_index() {
-        for perm in Permutation::<u8, 4>::all() {
-            let mut arr = [0, 1, 2, 3];
+        type Perm = Permutation<u8, 4>;
+        for perm in Perm::all() {
+            let mut arr = Perm::DEFAULT_ARRAY;
             perm.apply(&mut arr);
 
-            let mut arr2 = [0, 1, 2, 3];
+            let mut arr2 = Perm::DEFAULT_ARRAY;
 
             for index in 0..4 {
                 let element = perm.element_at_index(index, |x| x);
@@ -807,8 +793,8 @@ mod tests {
     }
 
     #[test]
-    pub fn test_calculate_changed(){
-        let r = Permutation::<u8, 4>::try_calculate([0,1,2,2], |x| *x);
+    pub fn test_calculate_with_duplicate() {
+        let r = Permutation::<u8, 4>::try_calculate([0, 1, 2, 2], |x| *x);
         assert_eq!(r, None)
     }
 
