@@ -10,13 +10,21 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     bench_old_index::<u128, 34>(c, 0);
     bench_old_index::<u128, 34>(c, 33);
 
-    bench_combine::<u8, 5>(c);
-    bench_combine::<u128, 5>(c);
-    bench_combine::<u16, 8>(c);
-    bench_combine::<u32, 12>(c);
-    bench_combine::<u64, 15>(c);
-    bench_combine::<u64, 20>(c);
-    bench_combine::<u128, 34>(c);
+    bench_combine_worst_case::<u8, 5>(c);
+    bench_combine_worst_case::<u128, 5>(c);
+    bench_combine_worst_case::<u16, 8>(c);
+    bench_combine_worst_case::<u32, 12>(c);
+    bench_combine_worst_case::<u64, 15>(c);
+    bench_combine_worst_case::<u64, 20>(c);
+    bench_combine_worst_case::<u128, 34>(c);
+
+    bench_combine_medium_case::<u8, 5>(c);
+    bench_combine_medium_case::<u128, 5>(c);
+    bench_combine_medium_case::<u16, 8>(c);
+    bench_combine_medium_case::<u32, 12>(c);
+    bench_combine_medium_case::<u64, 15>(c);
+    bench_combine_medium_case::<u64, 20>(c);
+    bench_combine_medium_case::<u128, 34>(c);
 
     bench_calculate::<u8, 5>(c);
     bench_calculate::<u128, 5>(c);
@@ -71,9 +79,20 @@ fn bench_calculate<I: Inner, const SIZE: usize>(c: &mut Criterion) {
     );
 }
 
-fn bench_combine<I: Inner, const SIZE: usize>(c: &mut Criterion) {
+fn bench_combine_medium_case<I: Inner, const SIZE: usize>(c: &mut Criterion) {
     c.bench_function(
-        format!("combine {} {SIZE}", type_name::<I>()).as_str(),
+        format!("combine_medium {} {SIZE}", type_name::<I>()).as_str(),
+        |b| {
+            let lhs = Permutation::<I, SIZE>::interleave(2);
+            let rhs = Permutation::<I, SIZE>::interleave(3);
+            b.iter(|| combine::<I, SIZE>(black_box(lhs), black_box(&rhs)))
+        },
+    );
+}
+
+fn bench_combine_worst_case<I: Inner, const SIZE: usize>(c: &mut Criterion) {
+    c.bench_function(
+        format!("combine_worst {} {SIZE}", type_name::<I>()).as_str(),
         |b| {
             let lhs = Permutation::<I, SIZE>::get_last();
             let rhs = Permutation::<I, SIZE>::get_last();

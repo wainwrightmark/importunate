@@ -532,8 +532,8 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         decomposer::Decomposer::from(self)
     }
 
-    //The slow (but oh so elegant) version of combine
-    // pub fn combine(&self, rhs: &Self) -> Self {
+    // /// The slow (but oh so elegant) version of combine
+    // pub fn combine_2(&self, rhs: &Self) -> Self {
     //     let mut left_swaps = self.swaps_array();
     //     for (i, diff) in rhs.swaps().enumerate() {
     //         Self::swap_swaps(&mut left_swaps[i..], diff);
@@ -545,15 +545,14 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     // fn swap_swaps(mut swaps_arr: &mut [u8], mut diff: u8) {
     //     while diff > 0 {
     //         let index_of_zero =
-    //             Self::index_of_element_from_swaps(swaps_arr.into_iter().map(|x| *x), 0);
+    //             Self::index_of_element_from_swaps(swaps_arr.iter().map(|x| *x), 0);
     //         let element_at_n = Self::element_at_index_from_swaps(swaps_arr, diff);
 
     //         swaps_arr[0] = element_at_n;
     //         if index_of_zero > 0 {
-    //             let min = diff.min(index_of_zero);
+    //             let min = diff.min(index_of_zero) as usize;
     //             diff = diff.abs_diff(index_of_zero);
-    //             swaps_arr = &mut swaps_arr[(min as usize)..];
-    //             diff = diff;
+    //             swaps_arr = &mut swaps_arr[min..];
     //         } else {
     //             break;
     //         }
@@ -750,7 +749,7 @@ mod tests {
 
             for index in 0..4 {
                 let element = perm.element_at_index(index, |x| x);
-                arr2[(index as usize)] = element;
+                arr2[index as usize] = element;
             }
 
             assert_eq!(arr, arr2);
