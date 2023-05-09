@@ -108,8 +108,7 @@ impl<'a, I: Inner, const ELEMENTS: usize> Arbitrary<'a> for Permutation<I, ELEME
         Self::arbitrary(&mut u)
     }
 
-    fn size_hint(depth: usize) -> (usize, Option<usize>) {
-        let _ = depth;
+    fn size_hint(_depth: usize) -> (usize, Option<usize>) {
         (Self::REQUIRED_BYTES, Some(Self::REQUIRED_BYTES))
     }
 }
