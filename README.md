@@ -69,12 +69,9 @@ The following table shows how many elements can fit into each type as well as th
 
 There are three different methods for calculating a permutation:
 
-`calculate_incomplete` will calculate the permuation for any array whose elements implement `Ord` but it is comparatively slow. It will even work if the array contains duplicate elements but keep in mind that permuations describing such arrays will not be unique.
+`calculate_incomplete` will calculate the permutation for any array whose elements implement `Ord` but it is comparatively slow. It will even work if the array contains duplicate elements but keep in mind that permuations describing such arrays will not be unique.
 
 `try_calculate` and `calculate_unchecked` both expect arrays of elements and functions mapping those elements to `u8`. Every element should map to a different `u8` in the range `0..ELEMENTS`. If this condition is not met, `try_calculate` will return `None` and `calculate_unchecked` will panic or loop forever. *Do not use it on user input*
-
-
-
 
 ## Contributing
 

@@ -168,11 +168,33 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         self.0.is_zero()
     }
 
-    fn swaps(&self) -> SwapsIterator<I> {
+    /// The swaps represented by this permutation
+    /// ```
+    /// let permutation = importunate::Permutation::<u8, 5>::try_from_inner(&42).unwrap();
+    /// let mut arr = [0,1,2,3,4];
+    ///
+    /// for (i, swap) in permutation.swaps().enumerate() {
+    ///   arr.swap(i, usize::from(swap) + i);
+    /// }
+    ///
+    /// assert_eq!(arr, [2, 1, 4, 3, 0])
+    /// ```
+    pub fn swaps(&self) -> SwapsIterator<I> {
         SwapsIterator::new(self)
     }
 
-    fn swaps_array(&self) -> [u8; ELEMENTS] {
+    /// The array of swaps represented by this permutation
+    /// ```
+    /// let permutation = importunate::Permutation::<u8, 5>::try_from_inner(&42).unwrap();
+    /// let mut arr = [0,1,2,3,4];
+    ///
+    /// for (i, swap) in permutation.swaps_array().into_iter().enumerate() {
+    ///   arr.swap(i, usize::from(swap) + i);
+    /// }
+    ///
+    /// assert_eq!(arr, [2, 1, 4, 3, 0])
+    /// ```
+    pub fn swaps_array(&self) -> [u8; ELEMENTS] {
         let mut swaps = [0; ELEMENTS];
 
         for (i, swap) in self.swaps().enumerate() {
