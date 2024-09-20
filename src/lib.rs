@@ -21,14 +21,12 @@
 //! ```
 //! use importunate::*;
 //!
-//! fn main() {
 //! let arr1 = [2,0,1,3];
 //! let mut arr2 = ["zero", "one", "two", "three"];
 //! let perm = Permutation::<u8,4>::calculate_unchecked(arr1, |&x|x);
 //! perm.apply(&mut arr2);
 //!
 //! assert_eq!(arr2,["two","zero", "one",  "three"] );
-//! }
 //!
 //!
 //! ```
@@ -188,7 +186,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         let mut mult: I = I::one();
 
         for (i, swap) in swaps.enumerate() {
-            let r = mult * swap.try_into().ok().unwrap();
+            let r = mult * swap.into();
             inner = inner + r;
             mult = mult * (ELEMENTS - i).try_into().ok().unwrap();
         }
@@ -509,7 +507,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         let mut arr = [0u8; ELEMENTS];
         let mut current = 0;
         let mut pile_number = 0;
-        for element in arr.iter_mut() {
+        for element in &mut arr {
             *element = current;
             current += piles;
             if current >= ELEMENTS as u8 {
@@ -563,7 +561,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
 mod tests {
     use crate::Permutation;
     use arbitrary::*;
-    use arbtest::arbitrary::{self, Unstructured};
+    use arbtest::{arbitrary::{self, Unstructured}, arbtest};
 
     use itertools::Itertools;
     use ntest::test_case;
@@ -674,7 +672,8 @@ mod tests {
             assert_eq!(perm, perm2);
             Ok(())
         }
-        arbtest::builder().run(test_bytes1);
+
+        arbtest(|u|test_bytes1(u));
     }
 
     #[test]
@@ -690,7 +689,7 @@ mod tests {
             Ok(())
         }
 
-        arbtest::builder().run(test_inner1);
+        arbtest(|u|test_inner1(u));
     }
 
     #[test]
@@ -710,7 +709,7 @@ mod tests {
             Ok(())
         }
 
-        arbtest::builder().run(test_swaps1);
+        arbtest(|u|test_swaps1(u));
     }
 
     #[test]

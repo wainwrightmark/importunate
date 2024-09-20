@@ -41,7 +41,7 @@ impl<I: Inner, const ELEMENTS: usize> From<Permutation<I, ELEMENTS>> for Decompo
         Self {
             array: perm.get_array(),
             index: 0,
-            phantom: core::marker::PhantomData::default(),
+            phantom: core::marker::PhantomData,
         }
     }
 }

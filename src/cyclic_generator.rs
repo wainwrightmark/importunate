@@ -24,8 +24,7 @@ impl<I: Inner, const ELEMENTS: usize> Iterator for CyclicGenerator<I, ELEMENTS> 
     type Item = Permutation<I, ELEMENTS>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let Some(n) = self.next
-        else {return None;};
+        let n = self.next?;
 
         if n.is_default() {
             self.next = None;
