@@ -13,8 +13,6 @@ Apply and manipulate permutations of small, const sized, distinct sets.
 - `invert` (undo) a `Permutation`
 - convert `to_le_byte_array` or `try_from_le_byte_array` to store in as few bytes as mathematically possible
 
-
-
 `no_std` by default. Features for `serde` and `arbitrary`
 
 The name of the crate is an anagram of 'permutation'.
@@ -25,7 +23,7 @@ This crate works with Cargo with a `Cargo.toml` like:
 
 ```toml
 [dependencies]
-importunate = "0.1.1"
+importunate = "0.1.2"
 ```
 
 ## Getting started
