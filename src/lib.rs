@@ -255,7 +255,6 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     /// # Panics
     ///
     /// This will panic or loop forever if the array's elements contain duplicates or elements outsize `0..ELEMENTS`
-
     pub fn calculate_unchecked<T, F: Fn(&T) -> u8>(mut arr: [T; ELEMENTS], mut f: F) -> Self {
         debug_assert!(Self::test_unique(arr.iter().map(&mut f)));
         let mut slot_multiplier: I = I::one();
@@ -466,7 +465,6 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
     /// assert_eq!(Permutation::<u8, 4>::reverse().get_array(), [3,2,1,0]);
     /// assert_eq!(Permutation::<u8, 5>::reverse().get_array(), [4,3,2,1,0]);
     /// ```
-
     pub fn reverse() -> Self {
         let mut swaps = [0; ELEMENTS];
         for (i, swap) in swaps.iter_mut().enumerate().take(ELEMENTS / 2) {
