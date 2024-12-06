@@ -203,6 +203,14 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
         swaps
     }
 
+    /// Create a permutation from a permutation of a smaller or equal number of elements
+    /// This will permute the first `M` elements and leave the other untouched
+    /// Panics if `M`` > `ELEMENTS`
+    pub fn from_lesser<J: Inner, const M: usize>(other: Permutation<J, M>) -> Self {
+        debug_assert!(M <= ELEMENTS);
+        Self::from_swaps(other.swaps())
+    }
+
     fn from_swaps(swaps: impl Iterator<Item = u8>) -> Self {
         let mut inner: I = I::zero();
         let mut mult: I = I::one();
@@ -581,7 +589,10 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
 mod tests {
     use crate::Permutation;
     use arbitrary::*;
-    use arbtest::{arbitrary::{self, Unstructured}, arbtest};
+    use arbtest::{
+        arbitrary::{self, Unstructured},
+        arbtest,
+    };
 
     use itertools::Itertools;
     use ntest::test_case;
@@ -693,7 +704,7 @@ mod tests {
             Ok(())
         }
 
-        arbtest(|u|test_bytes1(u));
+        arbtest(|u| test_bytes1(u));
     }
 
     #[test]
@@ -709,7 +720,7 @@ mod tests {
             Ok(())
         }
 
-        arbtest(|u|test_inner1(u));
+        arbtest(|u| test_inner1(u));
     }
 
     #[test]
@@ -729,7 +740,7 @@ mod tests {
             Ok(())
         }
 
-        arbtest(|u|test_swaps1(u));
+        arbtest(|u| test_swaps1(u));
     }
 
     #[test]
@@ -876,5 +887,21 @@ mod tests {
         let perm = Permutation::<u8, 4>::calculate_incomplete(&[2, 0, 1, 3]);
 
         assert_tokens(&perm, &[Token::U8(6)]);
+    }
+
+    #[test]
+    fn test_from_lesser(){
+        let mut data = String::new();
+        let arr = [0,1,2,3,4,5,6,7];
+        for perm4 in Permutation::<u8, 4>::all(){
+            let perm8 = Permutation::<u16, 8>::from_lesser(perm4);
+            let mut arr = arr.clone();
+            perm8.apply(&mut arr);
+            use std::fmt::Write;
+            writeln!(data, "{}", arr.into_iter().join(",")).unwrap();
+        }
+
+        //This should permute the first four elements and leave the last four in the same order
+        insta::assert_snapshot!(data);
     }
 }
