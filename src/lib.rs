@@ -205,7 +205,7 @@ impl<I: Inner, const ELEMENTS: usize> Permutation<I, ELEMENTS> {
 
     /// Create a permutation from a permutation of a smaller or equal number of elements
     /// This will permute the first `M` elements and leave the other untouched
-    /// Panics if `M`` > `ELEMENTS`
+    /// Panics if `M` > `ELEMENTS`
     pub fn from_lesser<J: Inner, const M: usize>(other: Permutation<J, M>) -> Self {
         debug_assert!(M <= ELEMENTS);
         Self::from_swaps(other.swaps())
