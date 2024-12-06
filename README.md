@@ -23,7 +23,7 @@ This crate works with Cargo with a `Cargo.toml` like:
 
 ```toml
 [dependencies]
-importunate = "0.1.2"
+importunate = "0.1.3"
 ```
 
 ## Getting started

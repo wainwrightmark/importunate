@@ -9,6 +9,11 @@ Possible header types:
 - `Bug Fixes` for any bug fixes.
 - `Breaking Changes` for any backwards-incompatible changes.#
 
+## v0.1.3 (2024-12-06)
+
+### Features
+
+- Added `from_lesser` which lets you convert a permutation to permutation with a greater number of elements
 
 ## v0.1.0 (2022-11-15)
 
