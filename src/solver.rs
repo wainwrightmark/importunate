@@ -1,7 +1,6 @@
 use crate::{inner::Inner, Permutation};
 
 /// Can be used to solve a permutation, finding the the shortest combination of a fixed set of permutations that leads to it
-
 pub struct SolveContext<I: Inner, const ELEMENTS: usize> {
     /// Every index contains four pairs of bits
     /// Each permutation is associated with a pair
